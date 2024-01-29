@@ -1,0 +1,96 @@
+ext {
+    //选择对应签名 "cainiao" "rockchip" "imx8" "freescale"
+    BUILD_SIGN="freescale"
+    BUILD_SIGN_PWD="android"
+    BUILD_SIGN_PATH="../other/facefuture.jks"
+    //android开发版本配置
+    android = [
+            compileSdkVersion         : 29,
+            buildToolsVersion         : "29.0.2",
+            minSdkVersion             : 19,
+            targetSdkVersion          : 29,
+            versionCode               : 16,
+            versionName               : "1.3",
+            appId                     : "com.library.sample",
+    ]
+    //配置此项可对应生成不同的包名/应用图标 跳转不同界面
+    APP_CHOOSE='serialport'
+    //support配置
+    support = [
+            "constraint-layout"       : 'androidx.constraintlayout:constraintlayout:1.1.3',
+            'appcompat-v7'            : 'androidx.appcompat:appcompat:1.0.0',
+            'recyclerview-v7'         : 'androidx.recyclerview:recyclerview:1.0.0',
+            'annotations'             : 'androidx.annotation:annotation:1.0.0',
+            'espresso'                : 'androidx.test.espresso:espresso-core:3.1.0',
+            'runner'                  : 'androidx.test.ext:junit:1.1.1',
+            'multidex'                : 'androidx.multidex:multidex:2.0.0',
+    ]
+    //依赖第三方配置
+    dependencies = [
+            "AndroidAutoSize"         : "com.github.JessYanCoding:AndroidAutoSize:v1.2.1",
+            "AndroidUSBCamera"        : "com.github.jiangdongguo.AndroidUSBCamera:libausbc:3.2.10",
+            "FastBle"                 : "com.github.Jasonchenlijian:FastBle:2.4.0",
+            "BluetoothHelper"         : "com.github.a-voyager:BluetoothHelper:f71d40a98b",
+            "zxing"                   : "com.google.zxing:core:3.5.1",
+            "converter-scalars"       : "com.squareup.retrofit2:converter-scalars:2.0.0",
+            "rxjava"                  : "io.reactivex.rxjava3:rxjava:3.0.0-RC3",
+            "rxandroid"               : "io.reactivex.rxjava2:rxandroid:2.1.1",
+            //network
+            "mqttv3"                  : "org.eclipse.paho:org.eclipse.paho.client.mqttv3:1.1.0",
+            "mqttv-service"           : "org.eclipse.paho:org.eclipse.paho.android.service:1.1.1",
+            //okhttp
+            "okhttp12"                : "com.squareup.okhttp3:okhttp:3.12.1",
+            "okhttp"                  : "com.squareup.okhttp3:okhttp:3.10.0",
+            //rxjava
+            "retrofit"                : "com.squareup.retrofit2:retrofit:2.6.2",
+            "converter-gson"          : "com.squareup.retrofit2:converter-gson:2.6.2",
+            "adapter-rxjava"          : "com.squareup.retrofit2:adapter-rxjava2:2.6.2",
+            //logging
+            "logging"                 : "de.mindpipe.android:android-logging-log4j:1.0.3",
+            "log4j"                   : "log4j:log4j:1.2.17",
+            "logger"                  : "com.orhanobut:logger:2.2.0",
+            //eventbus
+            "eventbus"                : "org.greenrobot:eventbus:3.1.1",
+            //Arouter
+            "arouter-compiler"        : "com.alibaba:arouter-compiler:1.5.2",
+            "arouter-api"             : "com.alibaba:arouter-api:1.5.2",
+            //json解析
+            "gson"                    : "com.google.code.gson:gson:2.8.6",
+            //物联网开发基础工具类
+            "base_keepalive"          : "com.github.wave-chtj:BaseKeepAlive:1.0.1",
+            "base_iotutils"           : "com.github.wave-chtj:BaseIotUtils:1.4.8",
+            "base_framework"          : "com.github.wave-chtj:BaseFramework:1.3.7",
+            "base_socket"             : "com.github.wave-chtj:BaseSocket:1.0.1",
+            //权限管理
+            "rxpermissions"           : "com.github.tbruyelle:rxpermissions:0.10.2",
+            //bugly的仓库
+            "crashreport_upgrade"     : "com.tencent.bugly:crashreport_upgrade:latest.release",
+            "hotrefresh"              : "com.tencent.tinker:tinker-android-lib:1.9.9",
+            //rx系列与View生命周期同步
+            "rxlifecycle"             : "com.trello.rxlifecycle2:rxlifecycle:2.2.2",
+            "rxlifecycle-components"  : "com.trello.rxlifecycle2:rxlifecycle-components:2.2.2",
+            "butterknife"             : "com.jakewharton:butterknife:10.2.0",
+            "butterknife-compiler"    : "com.jakewharton:butterknife-compiler:10.2.0",
+            "socket-client"           : "com.tonystark.android:socket:latest.release",
+            //findByView butterknife
+            "butterknife"             : "com.jakewharton:butterknife:10.2.3",
+            "butterknife-compiler"    : "com.jakewharton:butterknife-compiler:10.2.3",
+            //recycleView baseAdapter
+            "base_adapter"            : "com.github.CymChad:BaseRecyclerViewAdapterHelper:3.0.6",
+            //ZIP压缩工具类
+            "android_shell"           : "com.jrummyapps:android-shell:1.0.0",
+            //ZIP压缩工具类
+            "ziputils"                : "net.lingala.zip4j:zip4j:1.3.2",
+            //Excel jxl表格工具
+            "jxlutils"                : "net.sourceforge.jexcelapi:jxl:2.6.12",
+            //内存泄漏工具
+            "leakcanary"              : "com.squareup.leakcanary:leakcanary-android:1.6.1",
+            "leakcanaryandroidnoop"   : "com.squareup.leakcanary:leakcanary-android-no-op:1.6.1",
+            "greendao"                : "org.greenrobot:greendao:3.3.0",
+            //视频播放
+            "videoplay"               : "cn.jzvd:jiaozivideoplayer:7.4.2",
+            //屏幕适配
+            "autosize"                : "me.jessyan:autosize:1.2.1",
+    ]
+}
+
