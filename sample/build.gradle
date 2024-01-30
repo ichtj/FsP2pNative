@@ -3,7 +3,7 @@ apply plugin: 'com.android.application'
 android {
     signingConfigs {
         debug {
-            storeFile file('D:\\facefuture.jks')
+            storeFile file('../other/facefuture.jks')
             storePassword 'android'
             keyAlias 'rockchip'
             keyPassword 'android'
