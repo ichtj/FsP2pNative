@@ -12,6 +12,8 @@
 #include <memory>
 #include "fs_p2p/MessagePipeline.h"
 
+static std::shared_ptr<fs::p2p::MessagePipeline> s_mp;
+static std::map<std::string, fs::p2p::InfomationManifest> devList;
 
 extern "C" {
 /**
@@ -38,9 +40,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
 
 JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
-                                                     jobject conn_params, jobject callback) {
+                                            jobject conn_params, jobject callback) {
     callbackObj = (*env).NewGlobalRef(callback);
-    if (callback==NULL){
+    if (callback == NULL) {
         return -1;
     }
     gMethodConnectStatus = (*env).GetMethodID(callbackClass, "connectStatus", "(Z)V");
@@ -49,7 +51,7 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
                                         "(Lcom/library/natives/Request;)V");
     // 获取ConnParams类引用
     jclass connParamsClass = env->GetObjectClass(conn_params);
-    if (connParamsClass==NULL){
+    if (connParamsClass == NULL) {
         return -1;
     }
     // 获取字段ID
@@ -83,7 +85,7 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
     jstring host = (jstring) env->GetObjectField(conn_params, hostField);
     jint port = env->GetIntField(conn_params, portField);
 
-    LOGD("version>>%d,type>>%d",version,ordinalTypeValue);
+    LOGD("version>>%d,type>>%d", version, ordinalTypeValue);
 
     // 将Java字符串转换为C++字符串
     const char *snStr = env->GetStringUTFChars(sn, nullptr);
@@ -161,6 +163,7 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
     s_mp->setDeviceStartupCallback([](const fs::p2p::InfomationManifest &info) {
         // xcore是云边同步的模型名称，需要往这里注入物模型，使product_id和物模型绑定
         LOGD("setDeviceStartupCallback>>%s", info.model.c_str());
+        devList[info.sn] = info;
         if (info.model == "xcore") {
             // 注入设备物模型
             s_mp->postMethod({{info.sn, {
@@ -190,71 +193,17 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
 
     // 请求接入
     s_mp->setRequestCallback([](const fs::p2p::Request &req) {
-        const auto &self_info = s_mp->infomationManifest();
         std::map<std::string, fs::p2p::Payload::Device> res_device_list;
         // 将 std::string 转换为 const char*
         LOGD("setRequestCallback>action>>%d", req.action);
-        switch (req.action) {
-            case fs::p2p::Request::Action_Method: {
-
-                for (auto &item: req.payload.devices) {
-
-                    fs::p2p::Payload::Device res_device;
-                    res_device.sn = item.second.sn;
-                    res_device.product_id = item.second.product_id;
-
-                    for (auto &method: item.second.methods) {
-                        fs::p2p::Method out;
-                        out.name = method.name;
-                        out.reason_code = 0;
-
-                        // 填充 out.param
-
-                        out.reason_string = "";
-                        res_device.methods.push_back(out);
-                    }
-
-                    if (res_device.methods.size() > 0)
-                        res_device_list[res_device.sn] = res_device;
-                }
-                break;
-            }
-            case fs::p2p::Request::Action_Write:
-            case fs::p2p::Request::Action_Read: {
-                bool is_read = req.action == fs::p2p::Request::Action_Read;
-
-                for (auto &item: req.payload.devices) {
-
-                    fs::p2p::Payload::Device res_device;
-                    res_device.sn = item.second.sn;
-                    res_device.product_id = item.second.product_id;
-
-                    for (auto &service: item.second.services) {
-                        fs::p2p::Service out;
-                        out.name = service.name;
-                        out.reason_code = -1;
-                        out.reason_string = "NOT FOUND";
-
-                        // 填充 out.param
-
-                        res_device.services.push_back(out);
-                    }
-
-                    res_device_list[res_device.sn] = res_device;
-                }
-                break;
-            }
-        }
-        if (!res_device_list.empty()) {
-            s_mp->response(req, res_device_list);
-        }
         JNIEnv *env;
         if (gJavaVM->AttachCurrentThread(&env, NULL) != JNI_OK) {
             // 处理附加失败的情况
             return;
         }
+        jobject callbackRequest = convertRequestToJava(env, req);
         // 在这里使用env对象进行JNI操作
-        env->CallVoidMethod(callbackObj, gMethodRequest, convertRequestToJava(env, req));
+        env->CallVoidMethod(callbackObj, gMethodRequest, callbackRequest);
         gJavaVM->DetachCurrentThread();
     });
     return 0;
@@ -276,19 +225,19 @@ Java_com_library_natives_FsPipelineJNI_close(JNIEnv *env, jclass clz) {
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_postStartup(JNIEnv *env, jclass clz) {
-    return s_mp!=NULL?s_mp->postStartup():-1;
+Java_com_library_natives_FsPipelineJNI_postOnLine(JNIEnv *env, jclass clz) {
+    return s_mp != NULL ? s_mp->postStartup() : -1;
 }
 
 JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_postHeartbeat(JNIEnv *env, jclass clz) {
-    return s_mp!=NULL?s_mp->postHeartbeat():-1;
+    return s_mp != NULL ? s_mp->postHeartbeat() : -1;
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_postBody(JNIEnv *env, jclass clz, jobject request,
+Java_com_library_natives_FsPipelineJNI_respondBody(JNIEnv *env, jclass clz, jobject request,
                                                 jobject deviceMap) {
-    fs::p2p::Request convertRequest= getRequest(env,request);
+    fs::p2p::Request convertRequest = getRequest(env, request);
     // 获取 Map 类型的 Class 对象
     jclass mapClass = env->GetObjectClass(deviceMap);
 
@@ -336,18 +285,18 @@ Java_com_library_natives_FsPipelineJNI_postBody(JNIEnv *env, jclass clz, jobject
         jobject entry = env->CallObjectMethod(iterator, nextMethod);
 
         // 获取键和值
-        jstring key = (jstring)env->CallObjectMethod(entry, getKeyMethod);
+        jstring key = (jstring) env->CallObjectMethod(entry, getKeyMethod);
         jobject deviceObj = env->CallObjectMethod(entry, getValueMethod);
 
         // 创建 C++ 的 Device 对象
         fs::p2p::Payload::Device device;
 
         // 将 Java 字符串转换为 C++ 字符串
-        const char* keyStr = env->GetStringUTFChars(key, nullptr);
+        const char *keyStr = env->GetStringUTFChars(key, nullptr);
         device.sn = keyStr;
 
         // 获取 Device 对象的其他字段值
-        jstring productId = (jstring)env->GetObjectField(deviceObj, productIdField);
+        jstring productId = (jstring) env->GetObjectField(deviceObj, productIdField);
         device.product_id = env->GetStringUTFChars(productId, nullptr);
 
         // 处理 services 字段
@@ -369,83 +318,155 @@ Java_com_library_natives_FsPipelineJNI_postBody(JNIEnv *env, jclass clz, jobject
         env->ReleaseStringUTFChars(key, keyStr);
         env->ReleaseStringUTFChars(productId, device.product_id.c_str());
     }
-    return s_mp!=NULL?s_mp->response(convertRequest,deviceMapCpp):-1;
+    return s_mp != NULL ? s_mp->response(convertRequest, deviceMapCpp) : -1;
 }
 
-
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_postMethod(JNIEnv *env, jclass clz, jobject request,
-                                                  jobject methodsList) {
-    fs::p2p::Request convertRequest= getRequest(env,request);
-
+Java_com_library_natives_FsPipelineJNI_respondMethod(JNIEnv *env, jclass clz, jobject request,
+                                                  jobject params) {
+    fs::p2p::Request convertRequest = getRequest(env, request);
     std::map<std::string, fs::p2p::Payload::Device> res_device_list;
-    // 获取 Map 类型的 Class 对象
     for (auto &item: convertRequest.payload.devices) {
         fs::p2p::Payload::Device res_device;
         res_device.sn = item.second.sn;
         res_device.product_id = item.second.product_id;
-        res_device.methods=convertJavaToMethods(env,methodsList);
-        if (res_device.methods.size() > 0){
+        const fs::p2p::Method &firstMethod = res_device.methods.front();
+        fs::p2p::Method customizeMaps;
+        customizeMaps.name = firstMethod.name;
+        customizeMaps.params = convertJavaMap(env, params);
+        customizeMaps.reason_code = firstMethod.reason_code;
+        customizeMaps.reason_string = firstMethod.reason_string;
+        res_device.methods.clear();
+        res_device.methods.push_back(customizeMaps);
+        if (res_device.methods.size() > 0) {
             res_device_list[res_device.sn] = res_device;
         }
     }
-    return s_mp!=NULL?s_mp->response(convertRequest,res_device_list):-1;
+    return s_mp != NULL ? s_mp->response(convertRequest, res_device_list) : -1;
 }
 
-
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_postService(JNIEnv *env, jclass clz, jobject request,
-                                                   jobject servicesList) {
-    fs::p2p::Request convertRequest= getRequest(env,request);
-
-    std::map<std::string, fs::p2p::Payload::Device> res_device_list;
+Java_com_library_natives_FsPipelineJNI_respondServices(JNIEnv *env, jclass clz, jobject request,
+                                                    jobject servicesList) {
+    fs::p2p::Request convertRequest = getRequest(env, request);
     // 获取 Map 类型的 Class 对象
-    for (auto &item: convertRequest.payload.devices) {
-        fs::p2p::Payload::Device res_device;
-        res_device.sn = item.second.sn;
-        res_device.product_id = item.second.product_id;
-        res_device.services=convertJavaToServices(env,servicesList);
-        if (res_device.methods.size() > 0){
-            res_device_list[res_device.sn] = res_device;
-        }
-    }
-    return s_mp!=NULL?s_mp->response(convertRequest,res_device_list):-1;
+    convertRequest.payload.devices.begin()->second.services.clear();
+    convertRequest.payload.devices.begin()->second.services = convertJavaToServices(env,
+                                                                                    servicesList);
+    return s_mp != NULL ? s_mp->response(convertRequest, convertRequest.payload.devices) : -1;
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_postEvent(JNIEnv *env, jclass clz, jobject request,
-                                                 jobject eventsList) {
-    fs::p2p::Request convertRequest= getRequest(env,request);
-
-    std::map<std::string, fs::p2p::Payload::Device> res_device_list;
+Java_com_library_natives_FsPipelineJNI_respondService(JNIEnv *env, jclass clz, jobject request,
+                                                   jobject out) {
+    fs::p2p::Request convertRequest = getRequest(env, request);
     // 获取 Map 类型的 Class 对象
-    for (auto &item: convertRequest.payload.devices) {
-        fs::p2p::Payload::Device res_device;
-        res_device.sn = item.second.sn;
-        res_device.product_id = item.second.product_id;
-        res_device.events=convertJavaToEvents(env,eventsList);
-        if (res_device.methods.size() > 0){
-            res_device_list[res_device.sn] = res_device;
-        }
-    }
-    return s_mp!=NULL?s_mp->response(convertRequest,res_device_list):-1;
+    convertRequest.payload.devices.begin()->second.services.clear();
+    convertRequest.payload.devices.begin()->second.services.push_back(
+            convertJavaToService(env, out));
+    return s_mp != NULL ? s_mp->response(convertRequest, convertRequest.payload.devices) : -1;
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_postNotify(JNIEnv *env, jclass clz, jobject request,
-                                                  jobject list) {
-    return -1;
+Java_com_library_natives_FsPipelineJNI_postEvents(JNIEnv *env, jclass clz, jobject eventsList) {
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    fdevice.sn = s_mp->infomationManifest().sn;
+    fdevice.product_id = s_mp->infomationManifest().product_id;
+    fdevice.events = convertJavaToEvents(env, eventsList);
+    list[s_mp->infomationManifest().sn] = fdevice;
+    return s_mp != NULL ? s_mp->postEvent(list) : -1;
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_postRead(JNIEnv *env, jclass clz, jobject request,
-                                                jobject list) {
-    return -1;
+Java_com_library_natives_FsPipelineJNI_postEvent(JNIEnv *env, jclass clz, jobject out) {
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    fdevice.sn = s_mp->infomationManifest().sn;
+    fdevice.product_id = s_mp->infomationManifest().product_id;
+    fdevice.events.push_back(convertJavaEvent(env, out));
+    list[s_mp->infomationManifest().sn] = fdevice;
+    return s_mp != NULL ? s_mp->postEvent(list) : -1;
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_postWrite(JNIEnv *env, jclass clz, jobject request,
-                                                 jobject list) {
-    return -1;
+Java_com_library_natives_FsPipelineJNI_postNotify(JNIEnv *env, jclass clz, jobject out) {
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    fdevice.sn = s_mp->infomationManifest().sn;
+    fdevice.product_id = s_mp->infomationManifest().product_id;
+    fdevice.services= convertJavaToServices(env,out);
+    list[s_mp->infomationManifest().sn] = fdevice;
+    return s_mp != NULL ? s_mp->postNotify(list) : -1;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_library_natives_FsPipelineJNI_postReadList(JNIEnv *env, jclass clz, jstring sn,
+                                                    jobject out) {
+    std::string snStr = jstringToString(env, sn);
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    auto &dev = devList[snStr];
+    //fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
+    fdevice.sn = snStr;
+    fdevice.product_id = dev.product_id;
+    fdevice.services.push_back(convertJavaToService(env, out));
+    list[snStr] = fdevice;
+    return s_mp != NULL ? s_mp->postRead(list, [](const fs::p2p::Response &res, void *) {
+                                             LOGD("postReadList>>deviceSize>>%d", res.payload.devices.size());
+                                         }, NULL,
+                                         dev.getSubscribeTopic()) : -1;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_library_natives_FsPipelineJNI_postRead(JNIEnv *env, jclass clz, jstring sn, jobject out) {
+    std::string snStr = jstringToString(env, sn);
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    //auto &dev = devList[snStr];
+    fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
+    fdevice.sn = snStr;
+    fdevice.product_id = dev.product_id;
+    fdevice.services.push_back(convertJavaToService(env, out));
+    list[snStr] = fdevice;
+    return s_mp != NULL ? s_mp->postRead(list, [](const fs::p2p::Response &res, void *) {
+                                             LOGD("postRead>>deviceSize>>%d", res.payload.devices.size());
+                                         }, NULL,
+                                         dev.getSubscribeTopic()) : -1;
+}
+JNIEXPORT jint JNICALL
+Java_com_library_natives_FsPipelineJNI_postWriteList(JNIEnv *env, jclass clz, jstring sn,
+                                                     jobject out) {
+    std::string snStr = jstringToString(env, sn);
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    auto &dev = devList[snStr];
+    //fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
+    fdevice.sn = snStr;
+    fdevice.product_id = dev.product_id;
+    fdevice.services.push_back(convertJavaToService(env, out));
+    list[snStr] = fdevice;
+    return s_mp != NULL ? s_mp->postWrite(list, [](const fs::p2p::Response &res, void *) {
+                                              LOGD("postWriteList>>deviceSize>>%d", res.payload.devices.size());
+                                          }, NULL,
+                                          dev.getSubscribeTopic()) : -1;
+}
+
+
+JNIEXPORT jint JNICALL
+Java_com_library_natives_FsPipelineJNI_postWrite(JNIEnv *env, jclass clz, jstring sn, jobject out) {
+    std::string snStr = jstringToString(env, sn);
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    //auto &dev = devList[snStr];
+    fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
+    fdevice.sn = snStr;
+    fdevice.product_id = dev.product_id;
+    fdevice.services.push_back(convertJavaToService(env, out));
+    list[snStr] = fdevice;
+    return s_mp != NULL ? s_mp->postWrite(list, [](const fs::p2p::Response &res, void *) {
+                                              LOGD("postWrite>>deviceSize>>%d", res.payload.devices.size());
+                                          }, NULL,
+                                          dev.getSubscribeTopic()) : -1;
 }
 }

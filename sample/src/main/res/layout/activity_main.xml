@@ -39,6 +39,39 @@
             android:layout_height="wrap_content"
             android:text="清空" />
     </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+        <Button
+            android:id="@+id/btnEvent"
+            android:layout_weight="1"
+            android:layout_margin="5dp"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="事件" />
+        <Button
+            android:id="@+id/btnServiceRead"
+            android:layout_width="wrap_content"
+            android:layout_weight="1"
+            android:layout_margin="5dp"
+            android:layout_height="wrap_content"
+            android:text="属性读" />
+        <Button
+            android:id="@+id/btnServiceWrite"
+            android:layout_width="wrap_content"
+            android:layout_weight="1"
+            android:layout_margin="5dp"
+            android:layout_height="wrap_content"
+            android:text="属性写" />
+        <Button
+            android:id="@+id/btnNotify"
+            android:layout_width="wrap_content"
+            android:layout_weight="1"
+            android:layout_margin="5dp"
+            android:layout_height="wrap_content"
+            android:text="通知" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/tvResult"

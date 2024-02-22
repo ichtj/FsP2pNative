@@ -13,10 +13,11 @@ public class FsPipelineJNI {
 
     /**
      * 初始化fs_p2p管道
-     * @param connParams 初始化参数
+     *
+     * @param connParams       初始化参数
      * @param pipelineCallback 注册回调
      */
-    public static native void init(ConnParams connParams,PipelineCallback pipelineCallback);
+    public static native int init(ConnParams connParams, PipelineCallback pipelineCallback);
 
     /**
      * 开启连接
@@ -31,7 +32,7 @@ public class FsPipelineJNI {
     /**
      * 上线事件
      */
-    public static native int postStartup();
+    public static native int postOnLine();
 
     /**
      * 发布心跳 时间周期 1分钟执行一次
@@ -39,39 +40,76 @@ public class FsPipelineJNI {
     public static native int postHeartbeat();
 
     /**
-     * 发布总消息体
+     * 回应总消息体
+     *
+     * @param out     输出参数
+     * @return 是否成功
      */
-    public static native int postBody(Request source, Map<String, Device> list);
+    public static native int respondBody(Request request, Map<String, Device> out);
 
     /**
-     * 发布消息
+     * 回应消息
+     *
+     * @param out     输出参数
+     * @return 是否成功
      */
-    public static native int postMethod(Request source, List<Method> methods);
+    public static native int respondMethod(Request request,Map<String, String> out);
 
     /**
-     * 发布服务
+     * 回应服务
+     *
+     * @param out     输出参数
+     * @return 是否成功
      */
-    public static native int postService(Request source, List<Service> events);
+    public static native int respondServices(Request request,List<Service> out);
+
+    /**
+     * 回应服务
+     *
+     * @param out     输出参数
+     * @return 是否成功
+     */
+    public static native int respondService(Request request, Service out);
 
     /**
      * 发布事件
+     *
+     * @param out 输出参数
+     * @return 是否成功
      */
-    public static native int postEvent(Request source, List<Event> events);
+    public static native int postEvents(List<Event> out);
 
     /**
-     * 发布通知
+     * 发布事件
+     *
+     * @param out 输出参数
+     * @return 是否成功
      */
-    public static native int postNotify(Request source, List<Service> events);
+    public static native int postEvent(Event out);
+
+    /**
+     * 主动通知
+     */
+    public static native int postNotify(Service out);
 
     /**
      * 主动请求读
      */
-    public static native int postRead(Map<String, Device> list, List<Service> events);
+    public static native int postReadList(String sn,List<Service> out);
+
+    /**
+     * 主动请求读
+     */
+    public static native int postRead(String sn,Service out);
 
     /**
      * 主动请求写
      */
-    public static native int postWrite(Request source, List<Service> events);
+    public static native int postWriteList(String sn,List<Service> out);
 
+    /**
+     * 主动请求写
+     */
+    public static native int postWrite(String sn,Service out);
 }
 

@@ -3,24 +3,28 @@ package com.p2p.sample;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
-import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.library.natives.Action;
 import com.library.natives.ConnParams;
 import com.library.natives.Device;
+import com.library.natives.Event;
 import com.library.natives.FsPipelineJNI;
+import com.library.natives.Fsp2pTools;
+import com.library.natives.Payload;
 import com.library.natives.PipelineCallback;
 import com.library.natives.Request;
+import com.library.natives.Service;
 import com.library.natives.Type;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements OnClickListener {
@@ -30,6 +34,10 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     private Button btnDisConnect;
     private Button btnInit;
     private Button btnClear;
+    private Button btnEvent;
+    private Button btnServiceRead;
+    private Button btnServiceWrite;
+    private Button btnNotify;
     private TextView tvResult;
 
     Handler handler=new Handler(){
@@ -45,6 +53,14 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        btnEvent=findViewById(R.id.btnEvent);
+        btnEvent.setOnClickListener(this);
+        btnServiceRead=findViewById(R.id.btnServiceRead);
+        btnServiceRead.setOnClickListener(this);
+        btnServiceWrite=findViewById(R.id.btnServiceWrite);
+        btnServiceWrite.setOnClickListener(this);
+        btnNotify=findViewById(R.id.btnNotify);
+        btnNotify.setOnClickListener(this);
         btnClear=findViewById(R.id.btnClear);
         btnClear.setOnClickListener(this);
         btnInit=findViewById(R.id.btnInit);
@@ -75,43 +91,21 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         }.start();
     }
 
-    /**
-     * 获取设备SN号 请使用此唯一入口
-     */
-    public static String getSn() {
-        try {
-            return Build.VERSION.SDK_INT >= 30 ? Build.getSerial() : Build.SERIAL;
-        } catch (Throwable throwable) {
-            return "";
-        }
-    }
 
     public static ConnParams getConnParams() {
         ConnParams connParams = new ConnParams();
-        connParams.sn = getSn();
+        connParams.sn = Fsp2pTools.getSn();
         connParams.name = "xxx";
         connParams.product_id = "139";
         connParams.model = "iotcloud";
         connParams.type = Type.Unknown;
         connParams.version = -1;
-        connParams.json_protocol = convertToJsonToBase64(JSON_PROTOCOL);
+        connParams.json_protocol = Fsp2pTools.convertToJsonToBase64(JSON_PROTOCOL);
         connParams.userName = "fswl";
         connParams.passWord = "123456";
         connParams.host = "192.168.1.157";
         connParams.port = 1883;
         return connParams;
-    }
-
-
-    public static String convertToJsonToBase64(String jsonString) {
-        // 将 JSON 字符串转换为字节数组
-        byte[] jsonData = jsonString.getBytes();
-
-        // 使用 Base64 编码字节数组
-        byte[] base64Data = Base64.encode(jsonData, Base64.DEFAULT);
-
-        // 将编码后的字节数组转换为字符串
-        return new String(base64Data);
     }
 
     @Override
@@ -122,7 +116,7 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
                 public void connectStatus(boolean status) {
                     handler.sendMessage(handler.obtainMessage(0x00,"connectStatus>>"+status));
                     if (status){
-                        FsPipelineJNI.postStartup();
+                        FsPipelineJNI.postOnLine();
                         hearbeat();
                     }
                 }
@@ -134,13 +128,12 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
 
                 @Override
                 public void callback(Request request) {
-                    for (Map.Entry<String, Device> entry : request.payload.devices.entrySet()) {
-                        String key = entry.getKey();
-                        Device value = entry.getValue();
-                        int result=FsPipelineJNI.postMethod(request,value.methods);
-                        Log.d(TAG, "callback:result>>"+result+",key>>"+key+",value>>"+value);
-                    }
-                    handler.sendMessage(handler.obtainMessage(0x00,"request: request>>" + request));
+                    Map<String, String> params = new HashMap<>();
+                    params.put("params1", "1");
+                    params.put("params2", "2");
+                    int result = FsPipelineJNI.respondMethod(request, params);
+                    Log.d(TAG, "callback: result>>"+result);
+                    handler.sendMessage(handler.obtainMessage(0x00, "request: request>>" + request));
                 }
             });
         }if (view.getId()==btnConnect.getId()){
@@ -150,8 +143,27 @@ public class MainActivity extends AppCompatActivity implements OnClickListener {
         }if (view.getId()==btnClear.getId()){
             tvResult.setText("");
             tvResult.scrollTo(0, 0);
+        }if (view.getId()==btnEvent.getId()){
+            Map<String, String> out=new HashMap<>();
+            out.put("fileName","update.zip");
+            out.put("percent","1%");
+            Event event=new Event("file_download_percent",out);
+            FsPipelineJNI.postEvent(event);
+        }if (view.getId()==btnServiceRead.getId()){
+            Map<String, String> out=new HashMap<>();
+            out.put("name","ichtj");
+            Service service=new Service("device_infor",out,0,"");
+            FsPipelineJNI.postRead(Fsp2pTools.getSn(),service);
+        }if (view.getId()==btnServiceWrite.getId()){
+            Map<String, String> out=new HashMap<>();
+            out.put("name","ichtj");
+            Service service=new Service("device_infor",out,0,"");
+            FsPipelineJNI.postWrite(Fsp2pTools.getSn(),service);
+        }if (view.getId()==btnNotify.getId()){
+            Map<String, String> out=new HashMap<>();
+            out.put("name","ichtj");
+            Service service=new Service("device_infor",out,0,"");
+            FsPipelineJNI.postNotify(service);
         }
     }
-
-
 }
