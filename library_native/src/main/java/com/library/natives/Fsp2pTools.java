@@ -29,6 +29,22 @@ public class Fsp2pTools {
             return "";
         }
     }
+
+    /**
+     * 获取设备SN号 请使用此唯一入口
+     */
+    public static String getTargetSn() {
+        /*try {
+            return "FSM-1DBD81";
+        } catch (Throwable throwable) {
+            return "";
+        }*/
+        try {
+            return Build.VERSION.SDK_INT >= 30 ? Build.getSerial() : Build.SERIAL;
+        } catch (Throwable throwable) {
+            return "";
+        }
+    }
     /**
      * 获取当前系统毫秒的时间戳
      * @return 1502697135

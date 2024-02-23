@@ -727,7 +727,7 @@ std::list<fs::p2p::Service> convertJavaToServices(JNIEnv *env, jobject &services
     jfieldID reasonStringField = env->GetFieldID(methodClass, "reason_string",
                                                  "Ljava/lang/String;");
     // Create C++ std::list<Method>
-    std::list<fs::p2p::Service> methods;
+    std::list<fs::p2p::Service> servies;
 
     // Call List's iterator method to get an iterator
     jobject iterator = env->CallObjectMethod(servicesList, iteratorMethod);
@@ -738,37 +738,37 @@ std::list<fs::p2p::Service> convertJavaToServices(JNIEnv *env, jobject &services
         jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
 
         // Create C++ Method object
-        fs::p2p::Service method;
+        fs::p2p::Service service;
 
         // Get values from Java Method object
         jstring name = (jstring) env->GetObjectField(methodObj, nameField);
-        method.name = env->GetStringUTFChars(name, nullptr);
+        service.name = env->GetStringUTFChars(name, nullptr);
 
         jint reasonCode = env->GetIntField(methodObj, reasonCodeField);
-        method.reason_code = static_cast<int>(reasonCode);
+        service.reason_code = static_cast<int>(reasonCode);
 
         jstring reasonString = (jstring) env->GetObjectField(methodObj, reasonStringField);
-        method.reason_string = env->GetStringUTFChars(reasonString, nullptr);
+        service.reason_string = env->GetStringUTFChars(reasonString, nullptr);
 
         // Get Map object from params field
         jobject paramsObj = env->GetObjectField(methodObj, paramsField);
 
         // Process Map entries
-        processParams(env, paramsObj, method.propertys);
+        processParams(env, paramsObj, service.propertys);
 
         // Add the Method object to the std::list
-        methods.push_back(method);
+        servies.push_back(service);
 
-        // Release local references
-        env->ReleaseStringUTFChars(name, method.name.c_str());
-        env->ReleaseStringUTFChars(reasonString, method.reason_string.c_str());
+//        // Release local references
+//        env->ReleaseStringUTFChars(name, method.name.c_str());
+//        env->ReleaseStringUTFChars(reasonString, method.reason_string.c_str());
     }
 
     // Use the 'methods' list as needed...
 
     // Release local references
-    env->DeleteLocalRef(iterator);
-    return methods;
+    //env->DeleteLocalRef(iterator);
+    return servies;
 }
 // Function to convert Java Event to C++ struct
 fs::p2p::Event convertJavaEvent(JNIEnv* env, jobject eventObject) {
@@ -868,12 +868,12 @@ std::list<fs::p2p::Event> convertJavaToEvents(JNIEnv *env, jobject &eventsList) 
         // Add the Method object to the std::list
         events.push_back(event);
 
-        // Release local references
-        env->ReleaseStringUTFChars(name, event.name.c_str());
+//        // Release local references
+//        env->ReleaseStringUTFChars(name, event.name.c_str());
     }
 
     // Release local references
-    env->DeleteLocalRef(iterator);
+//    env->DeleteLocalRef(iterator);
     return events;
 }
 

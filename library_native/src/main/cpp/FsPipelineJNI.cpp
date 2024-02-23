@@ -366,7 +366,7 @@ Java_com_library_natives_FsPipelineJNI_respondService(JNIEnv *env, jclass clz, j
             convertJavaToService(env, out));
     return s_mp != NULL ? s_mp->response(convertRequest, convertRequest.payload.devices) : -1;
 }
-
+//fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
 JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_postEvents(JNIEnv *env, jclass clz, jobject eventsList) {
     std::map<std::string, fs::p2p::Payload::Device> list;
@@ -395,7 +395,19 @@ Java_com_library_natives_FsPipelineJNI_postNotify(JNIEnv *env, jclass clz, jobje
     fs::p2p::Payload::Device fdevice;
     fdevice.sn = s_mp->infomationManifest().sn;
     fdevice.product_id = s_mp->infomationManifest().product_id;
-    fdevice.services= convertJavaToServices(env,out);
+    fdevice.services.push_back(convertJavaToService(env,out));
+    list[s_mp->infomationManifest().sn] = fdevice;
+    return s_mp != NULL ? s_mp->postNotify(list) : -1;
+}
+
+
+JNIEXPORT jint JNICALL
+Java_com_library_natives_FsPipelineJNI_postNotifyList(JNIEnv *env, jclass clz, jobject out) {
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    fdevice.sn = s_mp->infomationManifest().sn;
+    fdevice.product_id = s_mp->infomationManifest().product_id;
+    fdevice.services=convertJavaToServices(env,out);
     list[s_mp->infomationManifest().sn] = fdevice;
     return s_mp != NULL ? s_mp->postNotify(list) : -1;
 }
@@ -407,10 +419,9 @@ Java_com_library_natives_FsPipelineJNI_postReadList(JNIEnv *env, jclass clz, jst
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
     auto &dev = devList[snStr];
-    //fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
-    fdevice.sn = snStr;
+    fdevice.sn = dev.sn;
     fdevice.product_id = dev.product_id;
-    fdevice.services.push_back(convertJavaToService(env, out));
+    fdevice.services=convertJavaToServices(env, out);
     list[snStr] = fdevice;
     return s_mp != NULL ? s_mp->postRead(list, [](const fs::p2p::Response &res, void *) {
                                              LOGD("postReadList>>deviceSize>>%d", res.payload.devices.size());
@@ -423,9 +434,8 @@ Java_com_library_natives_FsPipelineJNI_postRead(JNIEnv *env, jclass clz, jstring
     std::string snStr = jstringToString(env, sn);
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
-    //auto &dev = devList[snStr];
-    fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
-    fdevice.sn = snStr;
+    auto &dev = devList[snStr];
+    fdevice.sn = dev.sn;
     fdevice.product_id = dev.product_id;
     fdevice.services.push_back(convertJavaToService(env, out));
     list[snStr] = fdevice;
@@ -441,10 +451,9 @@ Java_com_library_natives_FsPipelineJNI_postWriteList(JNIEnv *env, jclass clz, js
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
     auto &dev = devList[snStr];
-    //fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
-    fdevice.sn = snStr;
+    fdevice.sn = dev.sn;
     fdevice.product_id = dev.product_id;
-    fdevice.services.push_back(convertJavaToService(env, out));
+    fdevice.services=convertJavaToServices(env, out);
     list[snStr] = fdevice;
     return s_mp != NULL ? s_mp->postWrite(list, [](const fs::p2p::Response &res, void *) {
                                               LOGD("postWriteList>>deviceSize>>%d", res.payload.devices.size());
@@ -458,9 +467,8 @@ Java_com_library_natives_FsPipelineJNI_postWrite(JNIEnv *env, jclass clz, jstrin
     std::string snStr = jstringToString(env, sn);
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
-    //auto &dev = devList[snStr];
-    fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
-    fdevice.sn = snStr;
+    auto &dev = devList[snStr];
+    fdevice.sn = dev.sn;
     fdevice.product_id = dev.product_id;
     fdevice.services.push_back(convertJavaToService(env, out));
     list[snStr] = fdevice;

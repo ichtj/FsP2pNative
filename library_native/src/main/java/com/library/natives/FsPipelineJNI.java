@@ -92,6 +92,12 @@ public class FsPipelineJNI {
      */
     public static native int postNotify(Service out);
 
+
+    /**
+     * 主动通知
+     */
+    public static native int postNotifyList(List<Service> out);
+
     /**
      * 主动请求读
      */
