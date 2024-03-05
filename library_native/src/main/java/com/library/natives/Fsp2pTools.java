@@ -22,7 +22,7 @@ public class Fsp2pTools {
     /**
      * 获取设备SN号 请使用此唯一入口
      */
-    public static String getSn() {
+    public static String registerClientId() {
         try {
             return Build.VERSION.SDK_INT >= 30 ? Build.getSerial() : Build.SERIAL;
         } catch (Throwable throwable) {
@@ -34,13 +34,8 @@ public class Fsp2pTools {
      * 获取设备SN号 请使用此唯一入口
      */
     public static String getTargetSn() {
-        /*try {
-            return "FSM-1DBD81";
-        } catch (Throwable throwable) {
-            return "";
-        }*/
         try {
-            return Build.VERSION.SDK_INT >= 30 ? Build.getSerial() : Build.SERIAL;
+            return registerClientId()+"fswl";
         } catch (Throwable throwable) {
             return "";
         }

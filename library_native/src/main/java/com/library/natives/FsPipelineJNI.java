@@ -15,9 +15,15 @@ public class FsPipelineJNI {
      * 初始化fs_p2p管道
      *
      * @param connParams       初始化参数
-     * @param pipelineCallback 注册回调
      */
-    public static native int init(ConnParams connParams, PipelineCallback pipelineCallback);
+    public static native int init(ConnParams connParams);
+    //public static native int init(ConnParams connParams/*, PipelineCallback pipelineCallback*/);
+
+    /**
+     * 注册回调
+     * @param pipelineCallback
+     */
+    public static native int registerCallback(PipelineCallback pipelineCallback);
 
     /**
      * 开启连接
@@ -39,10 +45,12 @@ public class FsPipelineJNI {
      */
     public static native int postHeartbeat();
 
+
+    /**--------------------------------------------回复其他设备 start--------------------------------------------------*/
     /**
      * 回应总消息体
      *
-     * @param out     输出参数
+     * @param out 输出参数
      * @return 是否成功
      */
     public static native int replyBody(Request request, Map<String, Device> out);
@@ -50,26 +58,38 @@ public class FsPipelineJNI {
     /**
      * 回应消息 回复
      *
-     * @param out     输出参数
+     * @param out 输出参数
      * @return 是否成功
      */
-    public static native int replyMethod(Request request,Map<String, String> out);
+    public static native int replyMethod(Request request, Map<String, String> out);
 
     /**
      * 回应服务-属性
      *
-     * @param out     输出参数
+     * @param out 输出参数
      * @return 是否成功
      */
-    public static native int replyServices(Request request,List<Service> out);
+    public static native int replyServices(Request request, List<Service> out);
 
     /**
      * 回应服务
      *
-     * @param out     输出参数
+     * @param out 输出参数
      * @return 是否成功
      */
     public static native int replyService(Request request, Service out);
+    /**--------------------------------------------回复其他设备 end--------------------------------------------------*/
+
+
+
+    /**-------------------------------------------向设备读写,事件 start------------------------------------------------*/
+    /**
+     * 发布事件
+     *
+     * @param out 输出参数
+     * @return 是否成功
+     */
+    public static native int pushEvents(List<Event> out);
 
     /**
      * 发布事件
@@ -77,44 +97,39 @@ public class FsPipelineJNI {
      * @param out 输出参数
      * @return 是否成功
      */
-    public static native int postEvents(List<Event> out);
-
-    /**
-     * 发布事件
-     *
-     * @param out 输出参数
-     * @return 是否成功
-     */
-    public static native int postEvent(Event out);
+    public static native int pushEvent(Event out);
 
     /**
      * 主动通知
      */
-    public static native int postNotify(Service out);
+    public static native int pushNotify(Service out);
 
     /**
      * 主动通知
      */
-    public static native int postNotifyList(List<Service> out);
+    public static native int pushNotifyList(List<Service> out);
 
     /**
      * 主动请求读
      */
-    public static native int postReadList(String sn,List<Service> out);
+    public static native int pushReadList(String sn, List<Service> out);
 
     /**
      * 主动请求读
      */
-    public static native int postRead(String sn,Service out);
+    public static native int pushRead(String sn, Service out);
 
     /**
      * 主动请求写
      */
-    public static native int postWriteList(String sn,List<Service> out);
+    public static native int pushWriteList(String sn, List<Service> out);
 
     /**
      * 主动请求写
      */
-    public static native int postWrite(String sn,Service out);
+    public static native int pushWrite(String sn, Service out);
+    /**-------------------------------------------向设备读写,事件 end------------------------------------------------*/
+
+
 }
 

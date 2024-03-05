@@ -107,7 +107,7 @@ public:
     void setErrorCallback(ErrorCallback cb);
 
     /**
-     * 收到请求时的回调
+     * 收到请求时的回调 能接收到IOT物联平台 和 其他设备发送给我的消息
      */
     void setRequestCallback(RequestCallback cb);
     /**

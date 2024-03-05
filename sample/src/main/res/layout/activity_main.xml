@@ -12,20 +12,32 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal">
 
+        <EditText
+            android:id="@+id/etClientId"
+            android:layout_width="160dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_gravity="center"
+            android:hint="请填写clientId" />
+
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
+            android:layout_gravity="center"
             android:layout_weight="1"
             android:onClick="initClick"
+            android:singleLine="true"
             android:text="初始化" />
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
+            android:layout_gravity="center"
             android:layout_weight="1"
             android:onClick="connectClick"
+            android:singleLine="true"
             android:text="连接" />
 
         <Button
@@ -33,15 +45,19 @@
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
             android:layout_weight="1"
+            android:layout_gravity="center"
             android:onClick="disConnectClick"
+            android:singleLine="true"
             android:text="断开" />
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
+            android:layout_gravity="center"
             android:layout_weight="1"
             android:onClick="clearTvClick"
+            android:singleLine="true"
             android:text="清空" />
     </LinearLayout>
 
@@ -56,6 +72,7 @@
             android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="postEventClick"
+            android:singleLine="true"
             android:text="事件(一)" />
 
 
@@ -65,6 +82,7 @@
             android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="postEventsClick"
+            android:singleLine="true"
             android:text="事件(多)" />
 
         <Button
@@ -73,6 +91,7 @@
             android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="postReadClick"
+            android:singleLine="true"
             android:text="属性读(一)" />
 
         <Button
@@ -81,6 +100,7 @@
             android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="postReadListClick"
+            android:singleLine="true"
             android:text="属性读(多)" />
 
         <Button
@@ -89,6 +109,7 @@
             android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="postWriteClick"
+            android:singleLine="true"
             android:text="属性写(一)" />
 
 
@@ -98,6 +119,7 @@
             android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="postWriteListClick"
+            android:singleLine="true"
             android:text="属性写(多)" />
 
         <Button
@@ -106,6 +128,7 @@
             android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="postNotifyClick"
+            android:singleLine="true"
             android:text="通知(一)" />
 
         <Button
@@ -114,6 +137,7 @@
             android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="postNotifyListClick"
+            android:singleLine="true"
             android:text="通知(多)" />
     </LinearLayout>
 
