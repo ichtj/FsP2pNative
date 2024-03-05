@@ -45,15 +45,23 @@ public class FsPipelineJNI {
      * @param out     输出参数
      * @return 是否成功
      */
-    public static native int respondBody(Request request, Map<String, Device> out);
+    public static native int replyBody(Request request, Map<String, Device> out);
 
     /**
-     * 回应消息
+     * 回应消息 回复
      *
      * @param out     输出参数
      * @return 是否成功
      */
-    public static native int respondMethod(Request request,Map<String, String> out);
+    public static native int replyMethod(Request request,Map<String, String> out);
+
+    /**
+     * 回应服务-属性
+     *
+     * @param out     输出参数
+     * @return 是否成功
+     */
+    public static native int replyServices(Request request,List<Service> out);
 
     /**
      * 回应服务
@@ -61,15 +69,7 @@ public class FsPipelineJNI {
      * @param out     输出参数
      * @return 是否成功
      */
-    public static native int respondServices(Request request,List<Service> out);
-
-    /**
-     * 回应服务
-     *
-     * @param out     输出参数
-     * @return 是否成功
-     */
-    public static native int respondService(Request request, Service out);
+    public static native int replyService(Request request, Service out);
 
     /**
      * 发布事件
@@ -91,7 +91,6 @@ public class FsPipelineJNI {
      * 主动通知
      */
     public static native int postNotify(Service out);
-
 
     /**
      * 主动通知

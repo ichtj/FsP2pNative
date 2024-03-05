@@ -235,7 +235,7 @@ Java_com_library_natives_FsPipelineJNI_postHeartbeat(JNIEnv *env, jclass clz) {
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_respondBody(JNIEnv *env, jclass clz, jobject request,
+Java_com_library_natives_FsPipelineJNI_replyBody(JNIEnv *env, jclass clz, jobject request,
                                                 jobject deviceMap) {
     fs::p2p::Request convertRequest = getRequest(env, request);
     // 获取 Map 类型的 Class 对象
@@ -322,7 +322,7 @@ Java_com_library_natives_FsPipelineJNI_respondBody(JNIEnv *env, jclass clz, jobj
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_respondMethod(JNIEnv *env, jclass clz, jobject request,
+Java_com_library_natives_FsPipelineJNI_replyMethod(JNIEnv *env, jclass clz, jobject request,
                                                   jobject params) {
     fs::p2p::Request convertRequest = getRequest(env, request);
     std::map<std::string, fs::p2p::Payload::Device> res_device_list;
@@ -346,7 +346,7 @@ Java_com_library_natives_FsPipelineJNI_respondMethod(JNIEnv *env, jclass clz, jo
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_respondServices(JNIEnv *env, jclass clz, jobject request,
+Java_com_library_natives_FsPipelineJNI_replyServices(JNIEnv *env, jclass clz, jobject request,
                                                     jobject servicesList) {
     fs::p2p::Request convertRequest = getRequest(env, request);
     // 获取 Map 类型的 Class 对象
@@ -357,7 +357,7 @@ Java_com_library_natives_FsPipelineJNI_respondServices(JNIEnv *env, jclass clz, 
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_respondService(JNIEnv *env, jclass clz, jobject request,
+Java_com_library_natives_FsPipelineJNI_replyService(JNIEnv *env, jclass clz, jobject request,
                                                    jobject out) {
     fs::p2p::Request convertRequest = getRequest(env, request);
     // 获取 Map 类型的 Class 对象

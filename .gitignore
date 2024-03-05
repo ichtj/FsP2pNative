@@ -7,6 +7,8 @@
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/library_native/.cxx
+/app/.cxx
 .DS_Store
 /build
 /captures
