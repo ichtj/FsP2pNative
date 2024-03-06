@@ -36,8 +36,10 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
     deviceClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_DEVICE));
     gMethodConnectStatus = (*env).GetMethodID(callbackClass, "connectStatus", "(Z)V");
     gMethodPrintLog = (*env).GetMethodID(callbackClass, "pipelineLog", "(ILjava/lang/String;)V");
-    gMethodRequest = (*env).GetMethodID(callbackClass, "callback",
+    gMCallback = (*env).GetMethodID(callbackClass, "callback",
                                         "(Lcom/library/natives/Request;)V");
+    gMErrCallback = (*env).GetMethodID(callbackClass, "errCallback",
+                                            "(ILjava/lang/String;)V");
     return JNI_VERSION_1_6;
 }
 
@@ -133,6 +135,27 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
         LOGI("setConnectStateCallback:state>>%d", state);
     });
 
+    s_mp->setErrorCallback([](int error_code, const std::string &error_string) {
+        JNIEnv *env;
+        int attached = 0;
+        if (gJavaVM->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
+            if (gJavaVM->AttachCurrentThread(&env, NULL) != 0) {
+                // 处理无法附加线程的情况
+                return;
+            }
+            attached = 1;
+        }
+        jstring javaStr = env->NewStringUTF(error_string.c_str());
+        // 遍历向量中的每个RequestCallback对象，并回调它们
+        for (auto &call: callbacks) {
+            // 在这里使用env对象进行JNI操作
+            (*env).CallVoidMethod((jobject) call, gMErrCallback, error_code, javaStr);
+        }
+        if (attached) {
+            gJavaVM->DetachCurrentThread();
+        }
+        LOGI("setErrorCallback>>%s", error_string.c_str());
+    });
     s_mp->setLogCallback([](int level, const std::string &str) {
         JNIEnv *env;
         int attached = 0;
@@ -170,7 +193,7 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
             // 遍历向量中的每个RequestCallback对象，并回调它们
             for (auto &call: callbacks) {
                 // 在这里使用env对象进行JNI操作
-                env->CallVoidMethod((jobject) call, gMethodRequest, callbackRequest);
+                env->CallVoidMethod((jobject) call, gMCallback, callbackRequest);
             }
             gJavaVM->DetachCurrentThread();
         });
@@ -211,8 +234,9 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_addPipelineCallback(JNIEnv *env, jclass clz, jobject callback) {
-    callbackObj = (*env).NewGlobalRef(callback);
+Java_com_library_natives_FsPipelineJNI_addPipelineCallback(JNIEnv *env, jclass clz,
+                                                           jobject callback) {
+    jobject callbackObj = (*env).NewGlobalRef(callback);
     if (callback == NULL) {
         return -1;
     }// 检查 callback 是否已经存在于 callbacks 中

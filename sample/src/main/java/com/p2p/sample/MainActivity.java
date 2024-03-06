@@ -109,6 +109,11 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
+        public void errCallback(int errCode, String description) {
+            handler.sendMessage(handler.obtainMessage(0x00, "errCallback1: errCode>>" + errCode + ",description>>" + description));
+        }
+
+        @Override
         public void pipelineLog(int level, String str) {
             handler.sendMessage(handler.obtainMessage(0x00, "pipelineLog1: level>>" + level + ",str>>" + str));
         }
@@ -132,6 +137,11 @@ public class MainActivity extends AppCompatActivity {
                 FsPipelineJNI.postOnLine();
                 hearbeat();
             }
+        }
+
+        @Override
+        public void errCallback(int errCode, String description) {
+            handler.sendMessage(handler.obtainMessage(0x00, "errCallback2: errCode>>" + errCode + ",description>>" + description));
         }
 
         @Override

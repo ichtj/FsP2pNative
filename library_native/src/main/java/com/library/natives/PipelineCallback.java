@@ -11,12 +11,18 @@ public interface PipelineCallback {
     void connectStatus(boolean status);
 
     /**
+     * 错误码回调
+     * @param errCode 错误码
+     * @param description 错误描述
+     */
+    void errCallback(int errCode, String description);
+
+    /**
      * 管道日志回调
      * @param level 等级 D,E,V,I,W
-     * @param str 日志内容
+     * @param content 日志内容
      */
-    void pipelineLog(int level,String str);
-
+    void pipelineLog(int level,String content);
 
     /**
      * 消息管道中的回调
@@ -29,4 +35,5 @@ public interface PipelineCallback {
      * ---------------------.postNotify(Request source, List<Service> events);//回应通知
      */
     void callback(Request request);
+
 }

@@ -32,7 +32,6 @@ struct ConnParams {
 #define  CLASS_IOTCALLBACK "com/library/natives/PipelineCallback"
 
 static JavaVM *gJavaVM;
-static jobject callbackObj;
 static jclass callbackClass;
 static jclass requestClass;
 static jclass methodClass;
@@ -42,7 +41,8 @@ static jclass serviceClass;
 static jclass deviceClass;
 static jmethodID gMethodConnectStatus;
 static jmethodID gMethodPrintLog;
-static jmethodID gMethodRequest;
+static jmethodID gMCallback;
+static jmethodID gMErrCallback;
 static ConnParams globalConnParams;
 static std::vector<jobject> callbacks;
 
