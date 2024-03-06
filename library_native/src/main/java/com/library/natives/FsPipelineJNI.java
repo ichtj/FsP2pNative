@@ -14,16 +14,23 @@ public class FsPipelineJNI {
     /**
      * 初始化fs_p2p管道
      *
-     * @param connParams       初始化参数
+     * @param connParams 初始化参数
      */
     public static native int init(ConnParams connParams);
-    //public static native int init(ConnParams connParams/*, PipelineCallback pipelineCallback*/);
 
     /**
      * 注册回调
+     *
      * @param pipelineCallback
      */
-    public static native int registerCallback(PipelineCallback pipelineCallback);
+    public static native int addPipelineCallback(PipelineCallback pipelineCallback);
+
+    /**
+     * 注册回调
+     *
+     * @param pipelineCallback
+     */
+    public static native int unRegisterCallback(PipelineCallback pipelineCallback);
 
     /**
      * 开启连接
@@ -81,8 +88,22 @@ public class FsPipelineJNI {
     /**--------------------------------------------回复其他设备 end--------------------------------------------------*/
 
 
-
     /**-------------------------------------------向设备读写,事件 start------------------------------------------------*/
+    /**
+     * 发布方法
+     *
+     * @param out 输出参数
+     * @return 是否成功
+     */
+    public static native int pushMethods(String sn, List<Method> out);
+    /**
+     * 发布方法
+     *
+     * @param out 输出参数
+     * @return 是否成功
+     */
+    public static native int pushMethod(String sn, Method out);
+
     /**
      * 发布事件
      *

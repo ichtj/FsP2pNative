@@ -44,9 +44,28 @@ static jmethodID gMethodConnectStatus;
 static jmethodID gMethodPrintLog;
 static jmethodID gMethodRequest;
 static ConnParams globalConnParams;
+static std::vector<jobject> callbacks;
 
+std::string jstringToString(JNIEnv *env, jstring jstr) {
+    const char *cstr = env->GetStringUTFChars(jstr, nullptr);
+    std::string result(cstr);
+    env->ReleaseStringUTFChars(jstr, cstr);
+    return result;
+}
 
-// 辅助函数：将 C++ 中的 Service 转换为 Java 对象
+void removeCallback(JNIEnv* env,jobject objectToRemove) {
+    // 查找要删除的对象
+    auto it = std::find_if(callbacks.begin(), callbacks.end(), [&](const jobject& obj) {
+        return env->IsSameObject(obj, objectToRemove);
+    });
+
+    // 如果找到要删除的对象，则将其从向量中移除
+    if (it != callbacks.end()) {
+        env->DeleteGlobalRef(*it); // 删除全局引用
+        callbacks.erase(it); // 从向量中移除
+    }
+}
+
 jobject convertToJavaServices(JNIEnv *env, std::list<fs::p2p::Service> services) {
     // 获取 List 类的引用
     jclass listClass = env->FindClass("java/util/ArrayList");
@@ -91,7 +110,6 @@ jobject convertToJavaServices(JNIEnv *env, std::list<fs::p2p::Service> services)
     return javaList;
 }
 
-// 辅助函数：将 C++ 中的 Service 转换为 Java 对象
 jobject convertToJavaMethods(JNIEnv *env, std::list<fs::p2p::Method> methods) {
     // 获取 List 类的引用
     jclass listClass = env->FindClass("java/util/ArrayList");
@@ -137,8 +155,6 @@ jobject convertToJavaMethods(JNIEnv *env, std::list<fs::p2p::Method> methods) {
     return javaList;
 }
 
-
-// 辅助函数：将 C++ 中的 Service 转换为 Java 对象
 jobject convertToJavaEvents(JNIEnv *env, std::list<fs::p2p::Event> events) {
     // 获取 List 类的引用
     jclass listClass = env->FindClass("java/util/ArrayList");
@@ -180,8 +196,6 @@ jobject convertToJavaEvents(JNIEnv *env, std::list<fs::p2p::Event> events) {
     return javaList;
 }
 
-
-// 在C++中将C++对象转换为Java对象
 jobject convertRequestToJava(JNIEnv *env, const fs::p2p::Request &request) {
     jmethodID reqConstructor = env->GetMethodID(requestClass, "<init>",
                                                 "(Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Lcom/library/natives/Payload;)V");
@@ -234,7 +248,6 @@ jobject convertRequestToJava(JNIEnv *env, const fs::p2p::Request &request) {
     return (*env).NewGlobalRef(javaRequest);
 }
 
-// 处理 params 字段
 void processParams(JNIEnv *env, jobject paramsObj, std::map<std::string, ordered_json> &params) {
     // 获取 Map 类型的 Class 对象
     jclass mapClass = env->GetObjectClass(paramsObj);
@@ -286,8 +299,6 @@ void processParams(JNIEnv *env, jobject paramsObj, std::map<std::string, ordered
     }
 }
 
-
-// 在C++中将C++对象转换为Java对象
 fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
     // 获取 Payload 类的引用
     jclass payloadClass = env->GetObjectClass(payload);
@@ -393,8 +404,51 @@ fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
     return getPayload;
 }
 
-fs::p2p::Service
-processServiceList(JNIEnv *env, jobject &servicesList, std::list<fs::p2p::Service> services) {
+std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &maps) {
+    std::map<std::string, ordered_json> cppMap;
+    // 获取 Java Map 的类和方法信息
+    jclass mapClass = env->GetObjectClass(maps);
+    jmethodID entrySetMethod = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
+    jclass setClass = env->FindClass("java/util/Set");
+    jmethodID iteratorMethod = env->GetMethodID(setClass, "iterator", "()Ljava/util/Iterator;");
+    jclass iteratorClass = env->FindClass("java/util/Iterator");
+    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+    jclass entryClass = env->FindClass("java/util/Map$Entry");
+    jmethodID getKeyMethod = env->GetMethodID(entryClass, "getKey", "()Ljava/lang/Object;");
+    jmethodID getValueMethod = env->GetMethodID(entryClass, "getValue", "()Ljava/lang/Object;");
+
+    // 获取 Map 的迭代器
+    jobject entrySet = env->CallObjectMethod(maps, entrySetMethod);
+    jobject iterator = env->CallObjectMethod(entrySet, iteratorMethod);
+
+    // 遍历 Map，并将数据转换为 C++ Map
+    while (env->CallBooleanMethod(iterator, env->GetMethodID(iteratorClass, "hasNext", "()Z"))) {
+        jobject entry = env->CallObjectMethod(iterator, nextMethod);
+        jstring key = static_cast<jstring>(env->CallObjectMethod(entry, getKeyMethod));
+        jstring value = static_cast<jstring>(env->CallObjectMethod(entry, getValueMethod));
+
+        // 将 Java String 转换为 C++ std::string
+        std::string cppKey = jstringToString(env, key);
+        std::string cppValue = jstringToString(env, value);
+
+        // 创建 ordered_json 对象并存入 C++ Map
+        ordered_json jsonValue = ordered_json::parse(cppValue);
+        cppMap[cppKey] = jsonValue;
+
+        // 释放局部引用
+        env->DeleteLocalRef(entry);
+        env->DeleteLocalRef(key);
+        env->DeleteLocalRef(value);
+    }
+
+    // 释放局部引用
+    env->DeleteLocalRef(iterator);
+    env->DeleteLocalRef(entrySet);
+
+    return cppMap;
+}
+
+fs::p2p::Service processServiceList(JNIEnv *env, jobject &servicesList, std::list<fs::p2p::Service> services) {
 // 获取 List 类型的 Class 对象
     jclass listClass = env->GetObjectClass(servicesList);
 
@@ -451,8 +505,7 @@ processServiceList(JNIEnv *env, jobject &servicesList, std::list<fs::p2p::Servic
     }
 }
 
-fs::p2p::Method
-processMethodList(JNIEnv *env, jobject &methodsList, std::list<fs::p2p::Method> methods) {
+fs::p2p::Method processMethodList(JNIEnv *env, jobject &methodsList, std::list<fs::p2p::Method> methods) {
     // 获取 List 类型的 Class 对象
     jclass listClass = env->GetObjectClass(methodsList);
 
@@ -509,55 +562,6 @@ processMethodList(JNIEnv *env, jobject &methodsList, std::list<fs::p2p::Method> 
     }
 }
 
-fs::p2p::Event
-processEventList(JNIEnv *env, jobject &eventsList, std::list<fs::p2p::Event> events) {
-// 获取 List 类型的 Class 对象
-    jclass listClass = env->GetObjectClass(eventsList);
-
-    // 获取 iterator 方法的 ID
-    jmethodID iteratorMethod = env->GetMethodID(listClass, "iterator", "()Ljava/util/Iterator;");
-    // 调用 iterator 方法获取迭代器
-    jobject iterator = env->CallObjectMethod(eventsList, iteratorMethod);
-
-    // 获取 Iterator 类型的 Class 对象
-    jclass iteratorClass = env->GetObjectClass(iterator);
-
-    // 获取 hasNext 和 next 方法的 ID
-    jmethodID hasNextMethod = env->GetMethodID(iteratorClass, "hasNext", "()Z");
-    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
-
-    // 获取 Method 类型的 Class 对象
-    jclass methodClass = env->FindClass("com/library/natives/Method");
-    // 获取 Method 类的字段 ID
-    jfieldID nameField = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
-    jfieldID paramsField = env->GetFieldID(methodClass, "params", "Ljava/util/Map;");
-
-    // 循环遍历 List 的元素
-    while (env->CallBooleanMethod(iterator, hasNextMethod)) {
-        // 调用 next 方法获取下一个元素
-        jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
-
-        // 创建 C++ 的 Method 对象
-        fs::p2p::Event method;
-
-        // 获取 name 字段
-        jstring name = (jstring) env->GetObjectField(methodObj, nameField);
-        method.name = env->GetStringUTFChars(name, nullptr);
-
-        // 获取 params 字段
-        jobject paramsObj = env->GetObjectField(methodObj, paramsField);
-        processParams(env, paramsObj, method.params);
-
-        // 将 Method 对象添加到列表中
-        events.push_back(method);
-
-        // 释放字符串资源
-        env->ReleaseStringUTFChars(name, method.name.c_str());
-    }
-}
-
-
-// 在C++中将C++对象转换为Java对象
 std::list<fs::p2p::Method> convertJavaToMethods(JNIEnv *env, jobject &methodsList) {
     // Get List class and its iterator method
     jclass listClass = env->GetObjectClass(methodsList);
@@ -617,60 +621,32 @@ std::list<fs::p2p::Method> convertJavaToMethods(JNIEnv *env, jobject &methodsLis
     return methods;
 }
 
+fs::p2p::Method convertJavaToMethod(JNIEnv* env, jobject methodObject) {
+    fs::p2p::Method cppMethod;
 
+    // Get class
+    jclass serviceClass = env->GetObjectClass(methodObject);
 
-// 将 Java 的 String 转换为 C++ 的 std::string
-std::string jstringToString(JNIEnv *env, jstring jstr) {
-    const char *cstr = env->GetStringUTFChars(jstr, nullptr);
-    std::string result(cstr);
-    env->ReleaseStringUTFChars(jstr, cstr);
-    return result;
-}
+    // Get name field
+    jfieldID nameFieldID = env->GetFieldID(serviceClass, "name", "Ljava/lang/String;");
+    jstring nameJava = (jstring)env->GetObjectField(methodObject, nameFieldID);
+    const char* nameCStr = env->GetStringUTFChars(nameJava, nullptr);
+    cppMethod.name = std::string(nameCStr);
+    env->ReleaseStringUTFChars(nameJava, nameCStr);
 
+    // Get reason_code
+    jfieldID reasonCodeFieldID = env->GetFieldID(serviceClass, "reason_code", "I");
+    jint reasonCodeJava = env->GetIntField(methodObject, reasonCodeFieldID);
+    cppMethod.reason_code = reasonCodeJava;
 
-// 在C++中将C++对象转换为Java对象
-std::map<std::string, ordered_json> convertJavaMap(JNIEnv *env, jobject &maps) {
-    std::map<std::string, ordered_json> cppMap;
-    // 获取 Java Map 的类和方法信息
-    jclass mapClass = env->GetObjectClass(maps);
-    jmethodID entrySetMethod = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
-    jclass setClass = env->FindClass("java/util/Set");
-    jmethodID iteratorMethod = env->GetMethodID(setClass, "iterator", "()Ljava/util/Iterator;");
-    jclass iteratorClass = env->FindClass("java/util/Iterator");
-    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
-    jclass entryClass = env->FindClass("java/util/Map$Entry");
-    jmethodID getKeyMethod = env->GetMethodID(entryClass, "getKey", "()Ljava/lang/Object;");
-    jmethodID getValueMethod = env->GetMethodID(entryClass, "getValue", "()Ljava/lang/Object;");
+    // Get reason_string
+    jfieldID reasonStringFieldID = env->GetFieldID(serviceClass, "reason_string", "Ljava/lang/String;");
+    jstring reasonStringJava = (jstring)env->GetObjectField(methodObject, reasonStringFieldID);
+    const char* reasonStringCStr = env->GetStringUTFChars(reasonStringJava, nullptr);
+    cppMethod.reason_string = std::string(reasonStringCStr);
+    env->ReleaseStringUTFChars(reasonStringJava, reasonStringCStr);
 
-    // 获取 Map 的迭代器
-    jobject entrySet = env->CallObjectMethod(maps, entrySetMethod);
-    jobject iterator = env->CallObjectMethod(entrySet, iteratorMethod);
-
-    // 遍历 Map，并将数据转换为 C++ Map
-    while (env->CallBooleanMethod(iterator, env->GetMethodID(iteratorClass, "hasNext", "()Z"))) {
-        jobject entry = env->CallObjectMethod(iterator, nextMethod);
-        jstring key = static_cast<jstring>(env->CallObjectMethod(entry, getKeyMethod));
-        jstring value = static_cast<jstring>(env->CallObjectMethod(entry, getValueMethod));
-
-        // 将 Java String 转换为 C++ std::string
-        std::string cppKey = jstringToString(env, key);
-        std::string cppValue = jstringToString(env, value);
-
-        // 创建 ordered_json 对象并存入 C++ Map
-        ordered_json jsonValue = ordered_json::parse(cppValue);
-        cppMap[cppKey] = jsonValue;
-
-        // 释放局部引用
-        env->DeleteLocalRef(entry);
-        env->DeleteLocalRef(key);
-        env->DeleteLocalRef(value);
-    }
-
-    // 释放局部引用
-    env->DeleteLocalRef(iterator);
-    env->DeleteLocalRef(entrySet);
-
-    return cppMap;
+    return cppMethod;
 }
 
 fs::p2p::Service convertJavaToService(JNIEnv* env, jobject serviceObject) {
@@ -708,7 +684,7 @@ fs::p2p::Service convertJavaToService(JNIEnv* env, jobject serviceObject) {
 
     return cppService;
 }
-// 在C++中将C++对象转换为Java对象
+
 std::list<fs::p2p::Service> convertJavaToServices(JNIEnv *env, jobject &servicesList) {
     // Get List class and its iterator method
     jclass listClass = env->GetObjectClass(servicesList);
@@ -770,7 +746,53 @@ std::list<fs::p2p::Service> convertJavaToServices(JNIEnv *env, jobject &services
     //env->DeleteLocalRef(iterator);
     return servies;
 }
-// Function to convert Java Event to C++ struct
+
+fs::p2p::Event processEventList(JNIEnv *env, jobject &eventsList, std::list<fs::p2p::Event> events) {
+// 获取 List 类型的 Class 对象
+    jclass listClass = env->GetObjectClass(eventsList);
+
+    // 获取 iterator 方法的 ID
+    jmethodID iteratorMethod = env->GetMethodID(listClass, "iterator", "()Ljava/util/Iterator;");
+    // 调用 iterator 方法获取迭代器
+    jobject iterator = env->CallObjectMethod(eventsList, iteratorMethod);
+
+    // 获取 Iterator 类型的 Class 对象
+    jclass iteratorClass = env->GetObjectClass(iterator);
+
+    // 获取 hasNext 和 next 方法的 ID
+    jmethodID hasNextMethod = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+    // 获取 Method 类型的 Class 对象
+    jclass methodClass = env->FindClass("com/library/natives/Method");
+    // 获取 Method 类的字段 ID
+    jfieldID nameField = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
+    jfieldID paramsField = env->GetFieldID(methodClass, "params", "Ljava/util/Map;");
+
+    // 循环遍历 List 的元素
+    while (env->CallBooleanMethod(iterator, hasNextMethod)) {
+        // 调用 next 方法获取下一个元素
+        jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
+
+        // 创建 C++ 的 Method 对象
+        fs::p2p::Event method;
+
+        // 获取 name 字段
+        jstring name = (jstring) env->GetObjectField(methodObj, nameField);
+        method.name = env->GetStringUTFChars(name, nullptr);
+
+        // 获取 params 字段
+        jobject paramsObj = env->GetObjectField(methodObj, paramsField);
+        processParams(env, paramsObj, method.params);
+
+        // 将 Method 对象添加到列表中
+        events.push_back(method);
+
+        // 释放字符串资源
+        env->ReleaseStringUTFChars(name, method.name.c_str());
+    }
+}
+
 fs::p2p::Event convertJavaEvent(JNIEnv* env, jobject eventObject) {
     fs::p2p::Event cppEvent;
 
@@ -823,8 +845,6 @@ fs::p2p::Event convertJavaEvent(JNIEnv* env, jobject eventObject) {
     return cppEvent;
 }
 
-
-// 在C++中将C++对象转换为Java对象
 std::list<fs::p2p::Event> convertJavaToEvents(JNIEnv *env, jobject &eventsList) {
     // Get List class and its iterator method
     jclass listClass = env->GetObjectClass(eventsList);
@@ -876,7 +896,6 @@ std::list<fs::p2p::Event> convertJavaToEvents(JNIEnv *env, jobject &eventsList) 
 //    env->DeleteLocalRef(iterator);
     return events;
 }
-
 
 fs::p2p::Request getRequest(JNIEnv *env, jobject &request) {
     // 获取ConnParams类引用

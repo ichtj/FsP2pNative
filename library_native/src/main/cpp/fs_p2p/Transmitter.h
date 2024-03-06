@@ -81,7 +81,7 @@ public:
      * 取消订阅
      * @param topic 取消订阅的主题
      * @return
-     */
+     */\
     virtual int unsubscribe(const std::string &topic) = 0;
 
     /**

@@ -16,15 +16,15 @@
             android:id="@+id/etClientId"
             android:layout_width="160dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:layout_gravity="center"
+            android:layout_weight="1"
             android:hint="请填写clientId" />
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="5dp"
             android:layout_gravity="center"
+            android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="initClick"
             android:singleLine="true"
@@ -33,8 +33,8 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="5dp"
             android:layout_gravity="center"
+            android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="connectClick"
             android:singleLine="true"
@@ -43,9 +43,9 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_gravity="center"
             android:layout_margin="5dp"
             android:layout_weight="1"
-            android:layout_gravity="center"
             android:onClick="disConnectClick"
             android:singleLine="true"
             android:text="断开" />
@@ -53,12 +53,58 @@
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_margin="5dp"
             android:layout_gravity="center"
+            android:layout_margin="5dp"
             android:layout_weight="1"
             android:onClick="clearTvClick"
             android:singleLine="true"
             android:text="清空" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="registerCallback1"
+            android:singleLine="true"
+            android:text="注册回调1" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="registerCallback2"
+            android:singleLine="true"
+            android:text="注册回调2" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="unRegisterCallback1"
+            android:singleLine="true"
+            android:text="注销回调1" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="unRegisterCallback2"
+            android:singleLine="true"
+            android:text="注销回调2" />
     </LinearLayout>
 
     <LinearLayout
@@ -122,6 +168,13 @@
             android:singleLine="true"
             android:text="属性写(多)" />
 
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -139,6 +192,24 @@
             android:onClick="postNotifyListClick"
             android:singleLine="true"
             android:text="通知(多)" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="postMethodClick"
+            android:singleLine="true"
+            android:text="方法(一)" />
+
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="postMethodsClick"
+            android:singleLine="true"
+            android:text="方法(多)" />
     </LinearLayout>
 
     <TextView

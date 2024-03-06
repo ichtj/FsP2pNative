@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <jni.h>
 #include "tools.h"
-#include "include/log.h"
+#include "log.h"
 #include <memory>
 #include "fs_p2p/MessagePipeline.h"
 
@@ -20,7 +20,6 @@ extern "C" {
  * 程序加载初始化 不要做耗时操作
  * @param jvm
  * @param reserved
- * @return
  */
 JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
     gJavaVM = jvm;
@@ -35,20 +34,16 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
     payloadClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_PAYLOAD));
     serviceClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_SERVICE));
     deviceClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_DEVICE));
+    gMethodConnectStatus = (*env).GetMethodID(callbackClass, "connectStatus", "(Z)V");
+    gMethodPrintLog = (*env).GetMethodID(callbackClass, "pipelineLog", "(ILjava/lang/String;)V");
+    gMethodRequest = (*env).GetMethodID(callbackClass, "callback",
+                                        "(Lcom/library/natives/Request;)V");
     return JNI_VERSION_1_6;
 }
 
 JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
-                                            jobject conn_params/*, jobject callback*/) {
-//    callbackObj = (*env).NewGlobalRef(callback);
-//    if (callback == NULL) {
-//        return -1;
-//    }
-//    gMethodConnectStatus = (*env).GetMethodID(callbackClass, "connectStatus", "(Z)V");
-//    gMethodPrintLog = (*env).GetMethodID(callbackClass, "pipelineLog", "(ILjava/lang/String;)V");
-//    gMethodRequest = (*env).GetMethodID(callbackClass, "callback",
-//                                        "(Lcom/library/natives/Request;)V");
+                                            jobject conn_params) {
     // 获取ConnParams类引用
     jclass connParamsClass = env->GetObjectClass(conn_params);
     if (connParamsClass == NULL) {
@@ -119,11 +114,6 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
     s_mp.reset(new fs::p2p::MessagePipeline(manifest));
 
     s_mp->setConnectStateCallback([](bool state) {
-        if (state) {
-            s_mp->postStartup();
-            s_mp->postHeartbeat();
-        }
-
         JNIEnv *env;
         int attached = 0;
         if (gJavaVM->GetEnv((void **) &env, JNI_VERSION_1_6) != JNI_OK) {
@@ -133,12 +123,14 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
             }
             attached = 1;
         }
-        // 在这里使用env进行JNI操作
-        (*env).CallVoidMethod(callbackObj, gMethodConnectStatus, state);
+        for (auto &call: callbacks) {
+            // 在这里使用env进行JNI操作
+            (*env).CallVoidMethod((jobject) call, gMethodConnectStatus, state);
+        }
         if (attached) {
             gJavaVM->DetachCurrentThread();
         }
-        LOGI("setConnectStateCallback>>%d", state);
+        LOGI("setConnectStateCallback:state>>%d", state);
     });
 
     s_mp->setLogCallback([](int level, const std::string &str) {
@@ -152,12 +144,37 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
             attached = 1;
         }
         jstring javaStr = env->NewStringUTF(str.c_str());
-        (*env).CallVoidMethod(callbackObj, gMethodPrintLog, level, javaStr);
+        // 遍历向量中的每个RequestCallback对象，并回调它们
+        for (auto &call: callbacks) {
+            // 在这里使用env对象进行JNI操作
+            (*env).CallVoidMethod((jobject) call, gMethodPrintLog, level, javaStr);
+        }
         if (attached) {
             gJavaVM->DetachCurrentThread();
         }
         LOGI("setLogCallback>>%s", str.c_str());
     });
+
+    if (s_mp != NULL) {
+        // 请求接入
+        s_mp->setRequestCallback([](const fs::p2p::Request &req) {
+            std::map<std::string, fs::p2p::Payload::Device> res_device_list;
+            // 将 std::string 转换为 const char*
+            LOGD("setRequestCallback>action>>%d", req.action);
+            JNIEnv *env;
+            if (gJavaVM->AttachCurrentThread(&env, NULL) != JNI_OK) {
+                // 处理附加失败的情况
+                return;
+            }
+            jobject callbackRequest = convertRequestToJava(env, req);
+            // 遍历向量中的每个RequestCallback对象，并回调它们
+            for (auto &call: callbacks) {
+                // 在这里使用env对象进行JNI操作
+                env->CallVoidMethod((jobject) call, gMethodRequest, callbackRequest);
+            }
+            gJavaVM->DetachCurrentThread();
+        });
+    }
 
     // 设备上线通知
     s_mp->setDeviceStartupCallback([](const fs::p2p::InfomationManifest &info) {
@@ -190,52 +207,37 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
                              NULL, info.getSubscribeTopic());
         }
     });
-
-//    // 请求接入
-//    s_mp->setRequestCallback([](const fs::p2p::Request &req) {
-//        std::map<std::string, fs::p2p::Payload::Device> res_device_list;
-//        // 将 std::string 转换为 const char*
-//        LOGD("setRequestCallback>action>>%d", req.action);
-//        JNIEnv *env;
-//        if (gJavaVM->AttachCurrentThread(&env, NULL) != JNI_OK) {
-//            // 处理附加失败的情况
-//            return;
-//        }
-//        jobject callbackRequest = convertRequestToJava(env, req);
-//        // 在这里使用env对象进行JNI操作
-//        env->CallVoidMethod(callbackObj, gMethodRequest, callbackRequest);
-//        gJavaVM->DetachCurrentThread();
-//    });
     return 0;
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_registerCallback(JNIEnv *env, jclass clz, jobject callback) {
+Java_com_library_natives_FsPipelineJNI_addPipelineCallback(JNIEnv *env, jclass clz, jobject callback) {
     callbackObj = (*env).NewGlobalRef(callback);
     if (callback == NULL) {
         return -1;
+    }// 检查 callback 是否已经存在于 callbacks 中
+    for (const jobject &cb: callbacks) {
+        if (env->IsSameObject(cb, callback)) {
+            // 如果找到相同的 callback，则可以返回相应的错误码或进行其他处理
+            LOGD("registerCallback:Duplicate object");
+            return -1;
+        }
     }
-    gMethodConnectStatus = (*env).GetMethodID(callbackClass, "connectStatus", "(Z)V");
-    gMethodPrintLog = (*env).GetMethodID(callbackClass, "pipelineLog", "(ILjava/lang/String;)V");
-    gMethodRequest = (*env).GetMethodID(callbackClass, "callback",
-                                        "(Lcom/library/natives/Request;)V");
-    if (s_mp != NULL) {
-        // 请求接入
-        s_mp->setRequestCallback([](const fs::p2p::Request &req) {
-            std::map<std::string, fs::p2p::Payload::Device> res_device_list;
-            // 将 std::string 转换为 const char*
-            LOGD("setRequestCallback>action>>%d", req.action);
-            JNIEnv *env;
-            if (gJavaVM->AttachCurrentThread(&env, NULL) != JNI_OK) {
-                // 处理附加失败的情况
-                return;
-            }
-            jobject callbackRequest = convertRequestToJava(env, req);
-            // 在这里使用env对象进行JNI操作
-            env->CallVoidMethod(callbackObj, gMethodRequest, callbackRequest);
-            gJavaVM->DetachCurrentThread();
-        });
+    // 如果不存在相同的 callback，则将其添加到 callbacks 中
+    callbacks.push_back(env->NewGlobalRef(callback));
+    LOGD("registerCallback:size>>%d", callbacks.size());
+    return 0;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_library_natives_FsPipelineJNI_unRegisterCallback(JNIEnv *env, jclass clz,
+                                                          jobject callback) {
+    jobject callbackObj = (*env).NewGlobalRef(callback);
+    if (callback == NULL) {
+        return -1;
     }
+    removeCallback(env, callbackObj);
+    LOGD("unRegisterCallback:size>>%d", callbacks.size());
     return 0;
 }
 
@@ -363,7 +365,7 @@ Java_com_library_natives_FsPipelineJNI_replyMethod(JNIEnv *env, jclass clz, jobj
         const fs::p2p::Method &firstMethod = res_device.methods.front();
         fs::p2p::Method customizeMaps;
         customizeMaps.name = firstMethod.name;
-        customizeMaps.params = convertJavaMap(env, params);
+        customizeMaps.params = convertOrderedJsons(env, params);
         customizeMaps.reason_code = firstMethod.reason_code;
         customizeMaps.reason_string = firstMethod.reason_string;
         res_device.methods.clear();
@@ -409,6 +411,40 @@ Java_com_library_natives_FsPipelineJNI_pushEvents(JNIEnv *env, jclass clz, jobje
 }
 
 JNIEXPORT jint JNICALL
+Java_com_library_natives_FsPipelineJNI_pushMethods(JNIEnv *env, jclass clz, jstring sn,
+                                                   jobject out) {
+    std::string snStr = jstringToString(env, sn);
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    auto &dev = devList[snStr];
+    fdevice.sn = dev.sn;
+    fdevice.product_id = dev.product_id;
+    fdevice.methods = convertJavaToMethods(env, out);
+    list[dev.sn] = fdevice;
+    return s_mp != NULL ? s_mp->postMethod(list, [](const fs::p2p::Response &res, void *) {
+                                               LOGD("postReadList>>deviceSize>>%d", res.payload.devices.size());
+                                           }, NULL,
+                                           dev.getSubscribeTopic()) : -1;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_library_natives_FsPipelineJNI_pushMethod(JNIEnv *env, jclass clz, jstring sn,
+                                                  jobject out) {
+    std::string snStr = jstringToString(env, sn);
+    std::map<std::string, fs::p2p::Payload::Device> list;
+    fs::p2p::Payload::Device fdevice;
+    auto &dev = devList[snStr];
+    fdevice.sn = dev.sn;
+    fdevice.product_id = dev.product_id;
+    fdevice.methods.push_back(convertJavaToMethod(env, out));
+    list[dev.sn] = fdevice;
+    return s_mp != NULL ? s_mp->postMethod(list, [](const fs::p2p::Response &res, void *) {
+                                               LOGD("postReadList>>deviceSize>>%d", res.payload.devices.size());
+                                           }, NULL,
+                                           dev.getSubscribeTopic()) : -1;
+}
+
+JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_pushEvent(JNIEnv *env, jclass clz, jobject out) {
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
@@ -429,7 +465,6 @@ Java_com_library_natives_FsPipelineJNI_pushNotify(JNIEnv *env, jclass clz, jobje
     list[s_mp->infomationManifest().sn] = fdevice;
     return s_mp != NULL ? s_mp->postNotify(list) : -1;
 }
-
 
 JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_pushNotifyList(JNIEnv *env, jclass clz, jobject out) {
@@ -490,7 +525,6 @@ Java_com_library_natives_FsPipelineJNI_pushWriteList(JNIEnv *env, jclass clz, js
                                           }, NULL,
                                           dev.getSubscribeTopic()) : -1;
 }
-
 
 JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_pushWrite(JNIEnv *env, jclass clz, jstring sn, jobject out) {

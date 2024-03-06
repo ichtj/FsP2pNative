@@ -19,6 +19,7 @@ import com.library.natives.Device;
 import com.library.natives.Event;
 import com.library.natives.FsPipelineJNI;
 import com.library.natives.Fsp2pTools;
+import com.library.natives.Method;
 import com.library.natives.Payload;
 import com.library.natives.PipelineCallback;
 import com.library.natives.Request;
@@ -43,7 +44,6 @@ public class MainActivity extends AppCompatActivity {
             FormatViewUtils.formatData(tvResult, msg.obj.toString() + "\n\r");
         }
     };
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -72,7 +72,6 @@ public class MainActivity extends AppCompatActivity {
         }.start();
     }
 
-
     public ConnParams getConnParams() {
         ConnParams connParams = new ConnParams();
         connParams.sn = etClientId.getText().toString().trim();
@@ -96,37 +95,80 @@ public class MainActivity extends AppCompatActivity {
      */
     public void initClick(View view) {
         FsPipelineJNI.init(getConnParams());
-        FsPipelineJNI.registerCallback(new PipelineCallback() {
-            @Override
-            public void connectStatus(boolean status) {
-                handler.sendMessage(handler.obtainMessage(0x00, "connectStatus>>" + status));
-                if (status) {
-                    FsPipelineJNI.postOnLine();
-                    hearbeat();
-                }
-            }
 
-            @Override
-            public void pipelineLog(int level, String str) {
-                handler.sendMessage(handler.obtainMessage(0x00, "pipelineLog: level>>" + level + ",str>>" + str));
-            }
+    }
 
-            @Override
-            public void callback(Request request) {
-                Map<String, String> params = new HashMap<>();
-                params.put("params1", "1");
-                params.put("params2", "2");
-                int result = FsPipelineJNI.replyMethod(request, params);
-                Log.d(TAG, "callback: result>>" + result);
-                handler.sendMessage(handler.obtainMessage(0x00, "request: request>>" + request));
+    PipelineCallback pipelineCallback1 = new PipelineCallback() {
+        @Override
+        public void connectStatus(boolean status) {
+            handler.sendMessage(handler.obtainMessage(0x00, "connectStatus1>>" + status));
+            if (status) {
+                FsPipelineJNI.postOnLine();
+                hearbeat();
             }
-        });
+        }
+
+        @Override
+        public void pipelineLog(int level, String str) {
+            handler.sendMessage(handler.obtainMessage(0x00, "pipelineLog1: level>>" + level + ",str>>" + str));
+        }
+
+        @Override
+        public void callback(Request request) {
+            Map<String, String> params = new HashMap<>();
+            params.put("params1", "1");
+            params.put("params2", "2");
+            int result = FsPipelineJNI.replyMethod(request, params);
+            Log.d(TAG, "callback1: result>>" + result);
+            handler.sendMessage(handler.obtainMessage(0x00, "request1: request>>" + request));
+        }
+    };
+
+    PipelineCallback pipelineCallback2 = new PipelineCallback() {
+        @Override
+        public void connectStatus(boolean status) {
+            handler.sendMessage(handler.obtainMessage(0x00, "connectStatus2>>" + status));
+            if (status) {
+                FsPipelineJNI.postOnLine();
+                hearbeat();
+            }
+        }
+
+        @Override
+        public void pipelineLog(int level, String str) {
+            handler.sendMessage(handler.obtainMessage(0x00, "pipelineLog2: level>>" + level + ",str>>" + str));
+        }
+
+        @Override
+        public void callback(Request request) {
+            Map<String, String> params = new HashMap<>();
+            params.put("params1", "1");
+            params.put("params2", "2");
+            int result = FsPipelineJNI.replyMethod(request, params);
+            Log.d(TAG, "callback2: result>>" + result);
+            handler.sendMessage(handler.obtainMessage(0x00, "request2: request>>" + request));
+        }
+    };
+
+    public void unRegisterCallback1(View view) {
+        FsPipelineJNI.unRegisterCallback(pipelineCallback1);
+    }
+
+    public void unRegisterCallback2(View view) {
+        FsPipelineJNI.unRegisterCallback(pipelineCallback2);
+    }
+
+    public void registerCallback1(View view) {
+        FsPipelineJNI.addPipelineCallback(pipelineCallback1);
+    }
+
+    public void registerCallback2(View view) {
+        FsPipelineJNI.addPipelineCallback(pipelineCallback2);
     }
 
     public void connectClick(View view) {
         FsPipelineJNI.connect();
     }
-
 
     public void disConnectClick(View view) {
         FsPipelineJNI.close();
@@ -144,7 +186,6 @@ public class MainActivity extends AppCompatActivity {
         Event event = new Event("file_download_percent", out);
         FsPipelineJNI.pushEvent(event);
     }
-
 
     public void postEventsClick(View view) {
         List<Event> events = new ArrayList<>();
@@ -211,10 +252,34 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void postNotifyListClick(View view) {
-        Map<String, String> out = new HashMap<>();
-        out.put("iccid", "123456");
-        out.put("lteoperator", "中国移动");
-        Service service = new Service("network", out, 0, "");
-        FsPipelineJNI.pushNotify(service);
+        List<Service> serviceList = new ArrayList<>();
+        Map<String, String> out1 = new HashMap<>();
+        out1.put("iccid", "123456");
+        out1.put("lteoperator", "中国移动");
+        Service service1 = new Service("network", out1, 0, "");
+        serviceList.add(service1);
+        FsPipelineJNI.pushNotifyList(serviceList);
+    }
+
+    public void postMethodClick(View view) {
+        Map<String, String> out1 = new HashMap<>();
+        out1.put("srcPath", "/sdcard/DCIM/test.log");
+        out1.put("desPath", "/sdcard/");
+        Method out = new Method("file_move", out1, 0, "");
+        FsPipelineJNI.pushMethod(Fsp2pTools.getTargetSn(), out);
+    }
+
+    public void postMethodsClick(View view) {
+        List<Method> methodList = new ArrayList<>();
+        Map<String, String> out1 = new HashMap<>();
+        out1.put("filePath", "/sdcard/DCIM/");
+        Method method1 = new Method("file_del", out1, 0, "");
+        Map<String, String> out2 = new HashMap<>();
+        out2.put("url", "www.baidu.com");
+        out2.put("name", "update");
+        out2.put("extension", "zip");
+        Method method2 = new Method("file_download", out2, 0, "");
+        methodList.add(method2);
+        FsPipelineJNI.pushMethods(Fsp2pTools.getTargetSn(), methodList);
     }
 }
