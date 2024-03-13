@@ -35,7 +35,7 @@ public class FsPipelineJNI {
     /**
      * 获取设备列表
      */
-    public static native List<DevModel> getDevModelList();
+    public static native List<SubDev> getDevModelList();
 
     /**
      * 开启连接

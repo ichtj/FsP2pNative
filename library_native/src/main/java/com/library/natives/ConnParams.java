@@ -7,14 +7,14 @@ public class ConnParams {
 //    public String model;
 //    public Type type;
 //    public int version;
-    public DevModel devModel;
+    public SubDev devModel;
     public String json_protocol;//产品协议体 json
     public String userName;
     public String passWord;
     public String host;
     public int port;
 
-    public ConnParams(DevModel devModel, String json_protocol, String userName, String passWord, String host, int port) {
+    public ConnParams(SubDev devModel, String json_protocol, String userName, String passWord, String host, int port) {
         this.devModel = devModel;
         this.json_protocol = json_protocol;
         this.userName = userName;

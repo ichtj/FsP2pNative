@@ -1,6 +1,6 @@
 package com.library.natives;
 
-public class DevModel {
+public class SubDev {
     public String sn;
     public String name;
     public String product_id;
@@ -8,10 +8,10 @@ public class DevModel {
     public Type type;
     public int version;
 
-    public DevModel() {
+    public SubDev() {
     }
 
-    public DevModel(String sn, String name, String product_id, String model, Type type, int version) {
+    public SubDev(String sn, String name, String product_id, String model, Type type, int version) {
         this.sn = sn;
         this.name = name;
         this.product_id = product_id;
@@ -22,7 +22,7 @@ public class DevModel {
 
     @Override
     public String toString() {
-        return "DevModel{" +
+        return "SubDev{" +
                 "sn='" + sn + '\'' +
                 ", name='" + name + '\'' +
                 ", product_id='" + product_id + '\'' +

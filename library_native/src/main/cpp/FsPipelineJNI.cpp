@@ -52,7 +52,7 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
         return -1;
     }
     jfieldID devModelFieldID = env->GetFieldID(connParamsClass, "devModel",
-                                               "Lcom/library/natives/DevModel;");
+                                               "Lcom/library/natives/SubDev;");
     // 获取devModel对象
     jobject devModelObj = env->GetObjectField(conn_params, devModelFieldID);
     jclass devModelClass = env->GetObjectClass(devModelObj);
@@ -283,7 +283,7 @@ Java_com_library_natives_FsPipelineJNI_getDevModelList(JNIEnv *env, jclass clz) 
 
     jobject arrayList = env->NewObject(listClass, listConstructor);
 
-    jclass devModelClass = env->FindClass("com/library/natives/DevModel");
+    jclass devModelClass = env->FindClass("com/library/natives/SubDev");
     jmethodID devModelConstructor = env->GetMethodID(devModelClass, "<init>",
                                                      "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/library/natives/Type;I)V");
     jclass typeClass = env->FindClass("com/library/natives/Type");

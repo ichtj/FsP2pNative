@@ -8,20 +8,15 @@ import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 import android.view.View;
-import android.view.View.OnClickListener;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import com.library.natives.Action;
 import com.library.natives.ConnParams;
-import com.library.natives.DevModel;
-import com.library.natives.Device;
+import com.library.natives.SubDev;
 import com.library.natives.Event;
 import com.library.natives.FsPipelineJNI;
 import com.library.natives.Fsp2pTools;
 import com.library.natives.Method;
-import com.library.natives.Payload;
 import com.library.natives.PipelineCallback;
 import com.library.natives.Request;
 import com.library.natives.Service;
@@ -75,7 +70,7 @@ public class MainActivity extends AppCompatActivity {
 
     public ConnParams getConnParams() {
         ConnParams connParams = new ConnParams();
-        connParams.devModel = new DevModel();
+        connParams.devModel = new SubDev();
         connParams.devModel.sn = etClientId.getText().toString().trim();
         connParams.devModel.name = "xxx";
         connParams.devModel.product_id = "139";
@@ -187,7 +182,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void getDeviceModelClick(View view) {
-        List<DevModel> devModels = FsPipelineJNI.getDevModelList();
+        List<SubDev> devModels = FsPipelineJNI.getDevModelList();
         String jsonFormat = JsonFormatUtils.formatJson(GsonTools.toJsonWtihNullField(devModels));
         Log.d(TAG, "getDeviceModelClick: jsonFormat>>"+jsonFormat);
         handler.sendMessage(handler.obtainMessage(0x00, jsonFormat));
