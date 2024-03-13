@@ -51,7 +51,7 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
     if (connParamsClass == NULL) {
         return -1;
     }
-    jfieldID devModelFieldID = env->GetFieldID(connParamsClass, "devModel",
+    jfieldID devModelFieldID = env->GetFieldID(connParamsClass, "subDev",
                                                "Lcom/library/natives/SubDev;");
     // 获取devModel对象
     jobject devModelObj = env->GetObjectField(conn_params, devModelFieldID);

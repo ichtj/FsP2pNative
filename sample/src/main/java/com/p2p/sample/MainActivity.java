@@ -70,13 +70,13 @@ public class MainActivity extends AppCompatActivity {
 
     public ConnParams getConnParams() {
         ConnParams connParams = new ConnParams();
-        connParams.devModel = new SubDev();
-        connParams.devModel.sn = etClientId.getText().toString().trim();
-        connParams.devModel.name = "xxx";
-        connParams.devModel.product_id = "139";
-        connParams.devModel.model = "iotcloud";
-        connParams.devModel.type = Type.Unknown;
-        connParams.devModel.version = -1;
+        connParams.subDev = new SubDev();
+        connParams.subDev.sn = etClientId.getText().toString().trim();
+        connParams.subDev.name = "xxx";
+        connParams.subDev.product_id = "139";
+        connParams.subDev.model = "iotcloud";
+        connParams.subDev.type = Type.Unknown;
+        connParams.subDev.version = -1;
         connParams.json_protocol = Fsp2pTools.convertToJsonToBase64(JSON_PROTOCOL);
         connParams.userName = "fswl";
         connParams.passWord = "123456";
