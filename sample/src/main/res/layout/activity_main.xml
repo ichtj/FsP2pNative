@@ -49,6 +49,15 @@
             android:onClick="disConnectClick"
             android:singleLine="true"
             android:text="断开" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="getDeviceModelClick"
+            android:singleLine="true"
+            android:text="获取子设备列表" />
 
         <Button
             android:layout_width="wrap_content"

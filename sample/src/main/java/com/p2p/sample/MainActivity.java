@@ -15,6 +15,7 @@ import android.widget.TextView;
 
 import com.library.natives.Action;
 import com.library.natives.ConnParams;
+import com.library.natives.DevModel;
 import com.library.natives.Device;
 import com.library.natives.Event;
 import com.library.natives.FsPipelineJNI;
@@ -74,16 +75,17 @@ public class MainActivity extends AppCompatActivity {
 
     public ConnParams getConnParams() {
         ConnParams connParams = new ConnParams();
-        connParams.sn = etClientId.getText().toString().trim();
-        connParams.name = "xxx";
-        connParams.product_id = "139";
-        connParams.model = "iotcloud";
-        connParams.type = Type.Unknown;
-        connParams.version = -1;
+        connParams.devModel = new DevModel();
+        connParams.devModel.sn = etClientId.getText().toString().trim();
+        connParams.devModel.name = "xxx";
+        connParams.devModel.product_id = "139";
+        connParams.devModel.model = "iotcloud";
+        connParams.devModel.type = Type.Unknown;
+        connParams.devModel.version = -1;
         connParams.json_protocol = Fsp2pTools.convertToJsonToBase64(JSON_PROTOCOL);
         connParams.userName = "fswl";
         connParams.passWord = "123456";
-        connParams.host = "192.168.1.157";
+        connParams.host = "192.168.1.154";
         connParams.port = 1883;
         return connParams;
     }
@@ -182,6 +184,13 @@ public class MainActivity extends AppCompatActivity {
 
     public void disConnectClick(View view) {
         FsPipelineJNI.close();
+    }
+
+    public void getDeviceModelClick(View view) {
+        List<DevModel> devModels = FsPipelineJNI.getDevModelList();
+        String jsonFormat = JsonFormatUtils.formatJson(GsonTools.toJsonWtihNullField(devModels));
+        Log.d(TAG, "getDeviceModelClick: jsonFormat>>"+jsonFormat);
+        handler.sendMessage(handler.obtainMessage(0x00, jsonFormat));
     }
 
     public void clearTvClick(View view) {

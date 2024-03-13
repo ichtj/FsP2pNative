@@ -45,6 +45,21 @@ static jmethodID gMCallback;
 static jmethodID gMErrCallback;
 static ConnParams globalConnParams;
 static std::vector<jobject> callbacks;
+static std::vector<fs::p2p::InfomationManifest> subDevList;
+
+// 添加对象并确保sn号不重复
+void addInfomationManifest(const fs::p2p::InfomationManifest& manifest) {
+    // 检查是否存在相同sn号的对象
+    auto it = std::find_if(subDevList.begin(), subDevList.end(), [&manifest](const fs::p2p::InfomationManifest& other) {
+        return manifest.sn == other.sn;
+    });
+
+    // 如果不存在相同sn号的对象，则添加到向量中
+    if (it == subDevList.end()) {
+        subDevList.push_back(manifest);
+    }
+}
+
 
 std::string jstringToString(JNIEnv *env, jstring jstr) {
     const char *cstr = env->GetStringUTFChars(jstr, nullptr);

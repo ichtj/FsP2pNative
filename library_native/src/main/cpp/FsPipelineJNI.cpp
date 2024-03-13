@@ -37,9 +37,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
     gMethodConnectStatus = (*env).GetMethodID(callbackClass, "connectStatus", "(Z)V");
     gMethodPrintLog = (*env).GetMethodID(callbackClass, "pipelineLog", "(ILjava/lang/String;)V");
     gMCallback = (*env).GetMethodID(callbackClass, "callback",
-                                        "(Lcom/library/natives/Request;)V");
+                                    "(Lcom/library/natives/Request;)V");
     gMErrCallback = (*env).GetMethodID(callbackClass, "errCallback",
-                                            "(ILjava/lang/String;)V");
+                                       "(ILjava/lang/String;)V");
     return JNI_VERSION_1_6;
 }
 
@@ -51,15 +51,19 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
     if (connParamsClass == NULL) {
         return -1;
     }
+    jfieldID devModelFieldID = env->GetFieldID(connParamsClass, "devModel",
+                                               "Lcom/library/natives/DevModel;");
+    // 获取devModel对象
+    jobject devModelObj = env->GetObjectField(conn_params, devModelFieldID);
+    jclass devModelClass = env->GetObjectClass(devModelObj);
+
     // 获取字段ID
-    jfieldID snField = env->GetFieldID(connParamsClass, "sn", "Ljava/lang/String;");
-    jfieldID nameField = env->GetFieldID(connParamsClass, "name", "Ljava/lang/String;");
-    jfieldID modelField = env->GetFieldID(connParamsClass, "model", "Ljava/lang/String;");
-    jfieldID typeField = env->GetFieldID(connParamsClass, "type", "Lcom/library/natives/Type;");
-    jclass typeClass = env->FindClass("com/library/natives/Type"); // 替换为实际的包名
-    jfieldID ordinalField = env->GetFieldID(typeClass, "ordinal", "I");
-    jfieldID versionField = env->GetFieldID(connParamsClass, "version", "I");
-    jfieldID productIdField = env->GetFieldID(connParamsClass, "product_id", "Ljava/lang/String;");
+    jfieldID snField = env->GetFieldID(devModelClass, "sn", "Ljava/lang/String;");
+    jfieldID nameField = env->GetFieldID(devModelClass, "name", "Ljava/lang/String;");
+    jfieldID modelField = env->GetFieldID(devModelClass, "model", "Ljava/lang/String;");
+    jfieldID typeField = env->GetFieldID(devModelClass, "type", "Lcom/library/natives/Type;");
+    jfieldID versionField = env->GetFieldID(devModelClass, "version", "I");
+    jfieldID productIdField = env->GetFieldID(devModelClass, "product_id", "Ljava/lang/String;");
     jfieldID jsonProtocolField = env->GetFieldID(connParamsClass, "json_protocol",
                                                  "Ljava/lang/String;");
     jfieldID userNameField = env->GetFieldID(connParamsClass, "userName", "Ljava/lang/String;");
@@ -68,31 +72,32 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
     jfieldID portField = env->GetFieldID(connParamsClass, "port", "I");
 
     // 获取字段值
-    jstring model = (jstring) env->GetObjectField(conn_params, modelField);
-    jstring sn = (jstring) env->GetObjectField(conn_params, snField);
-    jstring name = (jstring) env->GetObjectField(conn_params, nameField);
-    jobject typeObj = env->GetObjectField(conn_params, typeField);
-    int ordinalTypeValue = env->GetIntField(typeObj, ordinalField);
+    jstring model = (jstring) env->GetObjectField(devModelObj, modelField);
+    jstring sn = (jstring) env->GetObjectField(devModelObj, snField);
+    jstring name = (jstring) env->GetObjectField(devModelObj, nameField);
+    jobject typeObj = env->GetObjectField(devModelObj, typeField);
 
-    int version = env->GetIntField(conn_params, versionField);
-    jstring productId = (jstring) env->GetObjectField(conn_params, productIdField);
+    int version = env->GetIntField(devModelObj, versionField);
+    jclass typeClass = env->GetObjectClass(typeObj);
+    jmethodID ordinalMethodID = env->GetMethodID(typeClass, "ordinal", "()I");
+    jstring productId = (jstring) env->GetObjectField(devModelObj, productIdField);
     jstring jsonProtocol = (jstring) env->GetObjectField(conn_params, jsonProtocolField);
     jstring userName = (jstring) env->GetObjectField(conn_params, userNameField);
     jstring passWord = (jstring) env->GetObjectField(conn_params, passWordField);
     jstring host = (jstring) env->GetObjectField(conn_params, hostField);
     jint port = env->GetIntField(conn_params, portField);
 
-    LOGD("version>>%d,type>>%d", version, ordinalTypeValue);
-
-    // 将Java字符串转换为C++字符串
     const char *snStr = env->GetStringUTFChars(sn, nullptr);
     const char *nameStr = env->GetStringUTFChars(name, nullptr);
     const char *modelStr = env->GetStringUTFChars(model, nullptr);
+    const jint type = env->CallIntMethod(typeObj, ordinalMethodID);
     const char *productIdStr = env->GetStringUTFChars(productId, nullptr);
     const char *jsonProtocolStr = env->GetStringUTFChars(jsonProtocol, nullptr);
     const char *userNameStr = env->GetStringUTFChars(userName, nullptr);
     const char *passWordStr = env->GetStringUTFChars(passWord, nullptr);
     const char *hostStr = env->GetStringUTFChars(host, nullptr);
+
+    LOGD("version>>%d,type>>%d", version, type);
 
     // 构建C++结构体
     globalConnParams = ConnParams(snStr, nameStr, productIdStr, jsonProtocolStr, userNameStr,
@@ -111,7 +116,7 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
     manifest.product_id = globalConnParams.product_id;
     manifest.name = globalConnParams.name;
     manifest.model = modelStr;
-    manifest.type = ordinalTypeValue;
+    manifest.type = type;
     manifest.version = version;
     s_mp.reset(new fs::p2p::MessagePipeline(manifest));
 
@@ -230,6 +235,11 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
                              NULL, info.getSubscribeTopic());
         }
     });
+
+    s_mp->setDeviceHeartbeatCallback([](const fs::p2p::InfomationManifest &info) {
+        LOGD("setDeviceHeartbeatCallback>>%s", info.sn.c_str());
+        addInfomationManifest(info);
+    });
     return 0;
 }
 
@@ -263,6 +273,49 @@ Java_com_library_natives_FsPipelineJNI_unRegisterCallback(JNIEnv *env, jclass cl
     removeCallback(env, callbackObj);
     LOGD("unRegisterCallback:size>>%d", callbacks.size());
     return 0;
+}
+
+JNIEXPORT jobject JNICALL
+Java_com_library_natives_FsPipelineJNI_getDevModelList(JNIEnv *env, jclass clz) {
+    jclass listClass = env->FindClass("java/util/ArrayList");
+    jmethodID listConstructor = env->GetMethodID(listClass, "<init>", "()V");
+    jmethodID listAdd = env->GetMethodID(listClass, "add", "(Ljava/lang/Object;)Z");
+
+    jobject arrayList = env->NewObject(listClass, listConstructor);
+
+    jclass devModelClass = env->FindClass("com/library/natives/DevModel");
+    jmethodID devModelConstructor = env->GetMethodID(devModelClass, "<init>",
+                                                     "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Lcom/library/natives/Type;I)V");
+    jclass typeClass = env->FindClass("com/library/natives/Type");
+    jfieldID gatewayField = env->GetStaticFieldID(typeClass, "Gateway",
+                                                  "Lcom/library/natives/Type;");
+    jfieldID serviceField = env->GetStaticFieldID(typeClass, "Service",
+                                                  "Lcom/library/natives/Type;");
+    jfieldID unknownField = env->GetStaticFieldID(typeClass, "Unknown",
+                                                  "Lcom/library/natives/Type;");
+    jobject gatewayEnum = env->GetStaticObjectField(typeClass, gatewayField);
+    jobject serviceEnum = env->GetStaticObjectField(typeClass, serviceField);
+    jobject unknownEnum = env->GetStaticObjectField(typeClass, unknownField);
+
+    for (const auto &manifest: subDevList) {
+        jstring sn = env->NewStringUTF(manifest.sn.c_str());
+        jstring product_id = env->NewStringUTF(manifest.product_id.c_str());
+        jstring name = env->NewStringUTF(manifest.name.c_str());
+        jstring model = env->NewStringUTF(manifest.model.c_str());
+        jobject type;
+        if (manifest.type == fs::p2p::InfomationManifest::Gateway) {
+            type = gatewayEnum;
+        } else if (manifest.type == fs::p2p::InfomationManifest::Service) {
+            type = serviceEnum;
+        } else {
+            type = unknownEnum; // 设置为NULL或者其他默认值，视情况而定
+        }
+        jint version = static_cast<jint>(manifest.version);
+        jobject devModel = env->NewObject(devModelClass, devModelConstructor, sn, product_id, name,
+                                          model, type, version);
+        env->CallBooleanMethod(arrayList, listAdd, devModel);
+    }
+    return arrayList;
 }
 
 JNIEXPORT void JNICALL

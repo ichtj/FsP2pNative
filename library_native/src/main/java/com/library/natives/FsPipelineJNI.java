@@ -33,6 +33,11 @@ public class FsPipelineJNI {
     public static native int unRegisterCallback(PipelineCallback pipelineCallback);
 
     /**
+     * 获取设备列表
+     */
+    public static native List<DevModel> getDevModelList();
+
+    /**
      * 开启连接
      */
     public static native void connect();
@@ -96,6 +101,7 @@ public class FsPipelineJNI {
      * @return 是否成功
      */
     public static native int pushMethods(String sn, List<Method> out);
+
     /**
      * 发布方法
      *
