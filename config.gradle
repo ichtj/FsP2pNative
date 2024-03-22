@@ -11,7 +11,7 @@ ext {
             targetSdkVersion          : 29,
             versionCode               : 16,
             versionName               : "1.3",
-            appId                     : "com.library.sample",
+            appId                     : "com.p2p.sample",
     ]
     //配置此项可对应生成不同的包名/应用图标 跳转不同界面
     APP_CHOOSE='serialport'

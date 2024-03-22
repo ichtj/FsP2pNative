@@ -103,14 +103,6 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
     globalConnParams = ConnParams(snStr, nameStr, productIdStr, jsonProtocolStr, userNameStr,
                                   passWordStr, hostStr, port);
 
-    // 释放字符串资源
-    env->ReleaseStringUTFChars(sn, snStr);
-    env->ReleaseStringUTFChars(productId, productIdStr);
-    env->ReleaseStringUTFChars(jsonProtocol, jsonProtocolStr);
-    env->ReleaseStringUTFChars(userName, userNameStr);
-    env->ReleaseStringUTFChars(passWord, passWordStr);
-    env->ReleaseStringUTFChars(host, hostStr);
-
     fs::p2p::InfomationManifest manifest;
     manifest.sn = globalConnParams.sn;
     manifest.product_id = globalConnParams.product_id;
@@ -240,6 +232,20 @@ Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
         LOGD("setDeviceHeartbeatCallback>>%s", info.sn.c_str());
         addInfomationManifest(info);
     });
+
+    // 释放字符串资源
+    env->ReleaseStringUTFChars(model, modelStr);
+    env->ReleaseStringUTFChars(sn, snStr);
+    env->ReleaseStringUTFChars(name, nameStr);
+    env->ReleaseStringUTFChars(productId, productIdStr);
+    env->ReleaseStringUTFChars(jsonProtocol, jsonProtocolStr);
+    env->ReleaseStringUTFChars(userName, userNameStr);
+    env->ReleaseStringUTFChars(passWord, passWordStr);
+    env->ReleaseStringUTFChars(host, hostStr);
+
+    env->DeleteLocalRef(connParamsClass);
+    env->DeleteLocalRef(devModelObj);
+    env->DeleteLocalRef(typeObj);
     return 0;
 }
 
@@ -260,6 +266,7 @@ Java_com_library_natives_FsPipelineJNI_addPipelineCallback(JNIEnv *env, jclass c
     // 如果不存在相同的 callback，则将其添加到 callbacks 中
     callbacks.push_back(env->NewGlobalRef(callback));
     LOGD("registerCallback:size>>%d", callbacks.size());
+    (*env).DeleteGlobalRef(callbackObj);
     return 0;
 }
 
@@ -272,7 +279,19 @@ Java_com_library_natives_FsPipelineJNI_unRegisterCallback(JNIEnv *env, jclass cl
     }
     removeCallback(env, callbackObj);
     LOGD("unRegisterCallback:size>>%d", callbacks.size());
+    (*env).DeleteGlobalRef(callbackObj);
     return 0;
+}
+
+JNIEXPORT void JNICALL
+Java_com_library_natives_FsPipelineJNI_close(JNIEnv *env, jclass clz) {
+    if (s_mp != NULL) {
+        s_mp->close();
+    }
+    for (jobject cb : callbacks) {
+        (*env).DeleteGlobalRef(cb);
+    }
+    callbacks.clear();
 }
 
 JNIEXPORT jobject JNICALL
@@ -314,7 +333,21 @@ Java_com_library_natives_FsPipelineJNI_getDevModelList(JNIEnv *env, jclass clz) 
         jobject devModel = env->NewObject(devModelClass, devModelConstructor, sn, product_id, name,
                                           model, type, version);
         env->CallBooleanMethod(arrayList, listAdd, devModel);
+        //对象释放
+        env->DeleteLocalRef(sn);
+        env->DeleteLocalRef(product_id);
+        env->DeleteLocalRef(name);
+        env->DeleteLocalRef(model);
     }
+    //对象释放
+    env->DeleteLocalRef(listClass);
+    env->DeleteLocalRef(devModelClass);
+//    env->DeleteLocalRef(arrayList);
+
+    env->DeleteLocalRef(gatewayEnum);
+    env->DeleteLocalRef(serviceEnum);
+    env->DeleteLocalRef(unknownEnum);
+
     return arrayList;
 }
 
@@ -323,13 +356,6 @@ Java_com_library_natives_FsPipelineJNI_connect(JNIEnv *env, jclass clz) {
     if (s_mp != NULL) {
         s_mp->open(globalConnParams.host, globalConnParams.port, globalConnParams.userName,
                    globalConnParams.passWord);
-    }
-}
-
-JNIEXPORT void JNICALL
-Java_com_library_natives_FsPipelineJNI_close(JNIEnv *env, jclass clz) {
-    if (s_mp != NULL) {
-        s_mp->close();
     }
 }
 
@@ -427,6 +453,15 @@ Java_com_library_natives_FsPipelineJNI_replyBody(JNIEnv *env, jclass clz, jobjec
         env->ReleaseStringUTFChars(key, keyStr);
         env->ReleaseStringUTFChars(productId, device.product_id.c_str());
     }
+    env->DeleteLocalRef(mapClass);
+    env->DeleteLocalRef(setClass);
+    env->DeleteLocalRef(iteratorClass);
+    env->DeleteLocalRef(entryClass);
+    env->DeleteLocalRef(deviceClass);
+
+    env->DeleteLocalRef(entrySet);
+    env->DeleteLocalRef(iterator);
+
     return s_mp != NULL ? s_mp->response(convertRequest, deviceMapCpp) : -1;
 }
 
@@ -451,6 +486,10 @@ Java_com_library_natives_FsPipelineJNI_replyMethod(JNIEnv *env, jclass clz, jobj
             res_device_list[res_device.sn] = res_device;
         }
     }
+    //释放对象
+    env->DeleteLocalRef(request);
+    env->DeleteLocalRef(params);
+
     return s_mp != NULL ? s_mp->response(convertRequest, res_device_list) : -1;
 }
 
@@ -498,6 +537,7 @@ Java_com_library_natives_FsPipelineJNI_pushMethods(JNIEnv *env, jclass clz, jstr
     fdevice.product_id = dev.product_id;
     fdevice.methods = convertJavaToMethods(env, out);
     list[dev.sn] = fdevice;
+
     return s_mp != NULL ? s_mp->postMethod(list, [](const fs::p2p::Response &res, void *) {
                                                LOGD("postReadList>>deviceSize>>%d", res.payload.devices.size());
                                            }, NULL,

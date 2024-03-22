@@ -42,6 +42,7 @@ public class FsPipelineJNI {
      */
     public static native void connect();
 
+
     /**
      * 关闭连接
      */

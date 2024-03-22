@@ -677,14 +677,6 @@ fs::p2p::Service convertJavaToService(JNIEnv* env, jobject serviceObject) {
     cppService.name = std::string(nameCStr);
     env->ReleaseStringUTFChars(nameJava, nameCStr);
 
-    // Get propertys Map
-    jfieldID propertysFieldID = env->GetFieldID(serviceClass, "propertys", "Ljava/util/Map;");
-    jobject propertysMap = env->GetObjectField(serviceObject, propertysFieldID);
-    // Access and iterate over the Map as shown in the previous example
-
-    // Assuming you have a similar function to the one used for Event to populate the map
-    // populateCppMapFromJavaMap(env, propertysMap, cppService.propertys);
-
     // Get reason_code
     jfieldID reasonCodeFieldID = env->GetFieldID(serviceClass, "reason_code", "I");
     jint reasonCodeJava = env->GetIntField(serviceObject, reasonCodeFieldID);
