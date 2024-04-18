@@ -474,16 +474,17 @@ std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &ma
     while (env->CallBooleanMethod(iterator, env->GetMethodID(iteratorClass, "hasNext", "()Z"))) {
         jobject entry = env->CallObjectMethod(iterator, nextMethod);
         jstring key = static_cast<jstring>(env->CallObjectMethod(entry, getKeyMethod));
-        jstring value = static_cast<jstring>(env->CallObjectMethod(entry, getValueMethod));
-
         // 将 Java String 转换为 C++ std::string
         std::string cppKey = jstringToString(env, key);
-        std::string cppValue = isStringNullOrEmpty(env,value)?"":jstringToString(env, value);
-
-        // 创建 ordered_json 对象并存入 C++ Map
-        ordered_json jsonValue = isStringNullOrEmpty(env,value)?"":ordered_json::parse(cppValue);
-        cppMap[cppKey] = jsonValue;
-
+        jstring value = static_cast<jstring>(env->CallObjectMethod(entry, getValueMethod));
+        if (!isStringNullOrEmpty(env,value)){
+            std::string cppValue =jstringToString(env, value);
+            // 创建 ordered_json 对象并存入 C++ Map
+            ordered_json jsonValue = ordered_json::parse(cppValue);
+            cppMap[cppKey] = jsonValue;
+        }else{
+            cppMap[cppKey] = "";
+        }
         // 释放局部引用
         env->DeleteLocalRef(entry);
         env->DeleteLocalRef(key);

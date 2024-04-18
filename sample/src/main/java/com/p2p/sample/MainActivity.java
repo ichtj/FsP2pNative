@@ -121,6 +121,7 @@ public class MainActivity extends AppCompatActivity {
             params.put("params1", "1");
             params.put("params2", "");
             params.put("params3", null);
+            params.put("params4", "{\"name\":\"ichtj\",\"age\":18,\"sex\":\"男\"}");
             int result = FsPipelineJNI.replyMethod(request, params);
             Log.d(TAG, "callback1: result>>" + result);
             handler.sendMessage(handler.obtainMessage(0x00, "request1: request>>" + request));
