@@ -120,6 +120,7 @@ public class MainActivity extends AppCompatActivity {
             Map<String, String> params = new HashMap<>();
             params.put("params1", "1");
             params.put("params2", "");
+            params.put("params3", null);
             int result = FsPipelineJNI.replyMethod(request, params);
             Log.d(TAG, "callback1: result>>" + result);
             handler.sendMessage(handler.obtainMessage(0x00, "request1: request>>" + request));

@@ -478,7 +478,7 @@ std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &ma
 
         // 将 Java String 转换为 C++ std::string
         std::string cppKey = jstringToString(env, key);
-        std::string cppValue = jstringToString(env, value);
+        std::string cppValue = isStringNullOrEmpty(env,value)?"":jstringToString(env, value);
 
         // 创建 ordered_json 对象并存入 C++ Map
         ordered_json jsonValue = isStringNullOrEmpty(env,value)?"":ordered_json::parse(cppValue);
