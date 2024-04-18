@@ -46,6 +46,7 @@ dependencies {
     androidTestImplementation rootProject.ext.support["runner"]
     androidTestImplementation rootProject.ext.support["espresso"]
     api rootProject.ext.support["appcompat-v7"]
+//    api 'com.github.ichtj:FsP2pNative:1.1.9'
     implementation project(path: ':library_native')
     implementation 'com.google.code.gson:gson:2.8.6'
 }

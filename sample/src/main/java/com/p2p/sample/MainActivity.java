@@ -122,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
             params.put("params2", "");
             params.put("params3", null);
             params.put("params4", "{\"name\":\"ichtj\",\"age\":18,\"sex\":\"男\"}");
+            params.put("params5", "[ \"dfgsdg\" ] The path entered does not exist！");
             int result = FsPipelineJNI.replyMethod(request, params);
             Log.d(TAG, "callback1: result>>" + result);
             handler.sendMessage(handler.obtainMessage(0x00, "request1: request>>" + request));

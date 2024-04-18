@@ -60,6 +60,16 @@ bool isStringNullOrEmpty(JNIEnv *env, jstring str) {
     return result;
 }
 
+// 判断一个字符串是否是有效的 JSON 字符串
+bool isJSON(const std::string& str) {
+    try {
+        nlohmann::json::parse(str); // 尝试解析字符串为 JSON
+        return true;
+    } catch (const std::exception& e) {
+        return false;
+    }
+}
+
 // 添加对象并确保sn号不重复
 void addInfomationManifest(const fs::p2p::InfomationManifest& manifest) {
     // 检查是否存在相同sn号的对象
@@ -479,9 +489,13 @@ std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &ma
         jstring value = static_cast<jstring>(env->CallObjectMethod(entry, getValueMethod));
         if (!isStringNullOrEmpty(env,value)){
             std::string cppValue =jstringToString(env, value);
-            // 创建 ordered_json 对象并存入 C++ Map
-            ordered_json jsonValue = ordered_json::parse(cppValue);
-            cppMap[cppKey] = jsonValue;
+            try {
+                // 创建 ordered_json 对象并存入 C++ Map
+                ordered_json jsonValue = ordered_json::parse(cppValue);
+                cppMap[cppKey] = jsonValue;
+            } catch (const std::exception& e) {
+                cppMap[cppKey] = cppValue;
+            }
         }else{
             cppMap[cppKey] = "";
         }
