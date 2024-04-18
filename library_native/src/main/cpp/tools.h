@@ -49,6 +49,17 @@ static ConnParams globalConnParams;
 static std::vector<jobject> callbacks;
 static std::vector<fs::p2p::InfomationManifest> subDevList;
 
+bool isStringNullOrEmpty(JNIEnv *env, jstring str) {
+    if (str == NULL) {
+        // 如果字符串为NULL，则为空
+        return true;
+    }
+    const char *cstr = env->GetStringUTFChars(str, NULL);
+    bool result = (cstr == NULL || cstr[0] == '\0'); // 判断字符串是否为空或者为""
+    env->ReleaseStringUTFChars(str, cstr);
+    return result;
+}
+
 // 添加对象并确保sn号不重复
 void addInfomationManifest(const fs::p2p::InfomationManifest& manifest) {
     // 检查是否存在相同sn号的对象
@@ -470,7 +481,7 @@ std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &ma
         std::string cppValue = jstringToString(env, value);
 
         // 创建 ordered_json 对象并存入 C++ Map
-        ordered_json jsonValue = ordered_json::parse(cppValue);
+        ordered_json jsonValue = isStringNullOrEmpty(env,value)?"":ordered_json::parse(cppValue);
         cppMap[cppKey] = jsonValue;
 
         // 释放局部引用
