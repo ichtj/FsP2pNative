@@ -23,6 +23,7 @@ struct ConnParams {
 };
 
 
+#define  CLASS_ACTION "com/library/natives/Action"
 #define  CLASS_REQUEST "com/library/natives/Request"
 #define  CLASS_METHOD "com/library/natives/Method"
 #define  CLASS_EVENT "com/library/natives/Event"
@@ -34,6 +35,7 @@ struct ConnParams {
 static JavaVM *gJavaVM;
 static jclass callbackClass;
 static jclass requestClass;
+static jclass actionCls;
 static jclass methodClass;
 static jclass eventClass;
 static jclass payloadClass;
@@ -213,7 +215,7 @@ jobject convertToJavaEvents(JNIEnv *env, std::list<fs::p2p::Event> events) {
 
 jobject convertRequestToJava(JNIEnv *env, const fs::p2p::Request &request) {
     jmethodID reqConstructor = env->GetMethodID(requestClass, "<init>",
-                                                "(Ljava/lang/String;ILjava/lang/String;Ljava/lang/String;Lcom/library/natives/Payload;)V");
+                                                "(Ljava/lang/String;Lcom/library/natives/Action;Ljava/lang/String;Ljava/lang/String;Lcom/library/natives/Payload;)V");
 
     jmethodID payloadConstructor = env->GetMethodID(payloadClass, "<init>", "()V");
     jobject javaPayload = env->NewObject(payloadClass, payloadConstructor);
@@ -250,13 +252,34 @@ jobject convertRequestToJava(JNIEnv *env, const fs::p2p::Request &request) {
 
 
     const char *iidStr = request.iid.c_str();
-    int actionStr = request.action;
+//    int actionStr = request.action;
     const char *ackStr = request.ack.c_str();
     const char *timeStr = request.time.c_str();
+    jfieldID actionFieldID = NULL;
+    jobject actionEnum = NULL;
+    if(request.action==fs::p2p::Request::Action::Action_Method){
+        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Method", "Lcom/library/natives/Action;");
+    }else if(request.action==fs::p2p::Request::Action::Action_Read){
+        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Read", "Lcom/library/natives/Action;");
+    }else if(request.action==fs::p2p::Request::Action::Action_Write){
+        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Write", "Lcom/library/natives/Action;");
+    }else if(request.action==fs::p2p::Request::Action::Action_Notify){
+        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Notify", "Lcom/library/natives/Action;");
+    }else if(request.action==fs::p2p::Request::Action::Action_Event){
+        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Event", "Lcom/library/natives/Action;");
+    }else if(request.action==fs::p2p::Request::Action::Action_Broadcast){
+        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Broadcast", "Lcom/library/natives/Action;");
+    }else{
+        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Unknown", "Lcom/library/natives/Action;");
+    }
+    if (actionFieldID != NULL) {
+        actionEnum = env->GetStaticObjectField(actionCls, actionFieldID);
+    }
+
     jobject javaRequest = env->NewObject(requestClass,
                                          reqConstructor,
                                          env->NewStringUTF(iidStr),
-                                         actionStr,
+                                         actionEnum,
                                          env->NewStringUTF(ackStr),
                                          env->NewStringUTF(timeStr),
                                          javaPayload);
@@ -910,7 +933,7 @@ fs::p2p::Request getRequest(JNIEnv *env, jobject &request) {
 
     // 获取字段ID
     jfieldID iidField = env->GetFieldID(connParamsClass, "iid", "Ljava/lang/String;");
-    jfieldID actionField = env->GetFieldID(connParamsClass, "action", "I");
+    jfieldID actionField = env->GetFieldID(connParamsClass, "action", "Lcom/library/natives/Action;");
     jfieldID ackField = env->GetFieldID(connParamsClass, "ack", "Ljava/lang/String;");
     jfieldID timeField = env->GetFieldID(connParamsClass, "time", "Ljava/lang/String;");
     jfieldID payloadField = env->GetFieldID(connParamsClass, "payload",
@@ -918,7 +941,13 @@ fs::p2p::Request getRequest(JNIEnv *env, jobject &request) {
 
     // 获取字段值
     jstring iid = (jstring) env->GetObjectField(request, iidField);
-    int action = (jint) env->GetIntField(request, actionField);
+//    int action = (jint) env->GetIntField(request, actionField);
+    jobject actionObj = env->GetObjectField(request, actionField);
+    // 获取 Action 枚举的 ordinal() 方法 ID
+    jmethodID ordinalActionID = env->GetMethodID(actionCls, "ordinal", "()I");
+    jint action = env->CallIntMethod(actionObj, ordinalActionID);
+
+
     jstring ack = (jstring) env->GetObjectField(request, ackField);
     jstring time = (jstring) env->GetObjectField(request, timeField);
     jobject payload = (jobject) env->GetObjectField(request, payloadField);

@@ -29,6 +29,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
     }
     callbackClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_IOTCALLBACK));
     requestClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_REQUEST));
+    actionCls = (jclass) env->NewGlobalRef(env->FindClass(CLASS_ACTION));
     methodClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_METHOD));
     eventClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_EVENT));
     payloadClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_PAYLOAD));
