@@ -49,6 +49,37 @@ static ConnParams globalConnParams;
 static std::vector<jobject> callbacks;
 static std::vector<fs::p2p::InfomationManifest> subDevList;
 
+static jobject get_json_value(JNIEnv *env, const ordered_json &v) {
+    try {
+        if (v.type() == json::value_t::number_float) {
+            jfloat javaFloat = static_cast<jfloat>(v);
+            return env->NewObject(env->FindClass("java/lang/Float"),
+                                  env->GetMethodID(env->FindClass("java/lang/Float"), "<init>",
+                                                   "(F)V"), javaFloat);
+        } else if (v.type() == json::value_t::boolean) {
+            jboolean javaBoolean = static_cast<jboolean>(v);
+            return env->NewObject(env->FindClass("java/lang/Boolean"),
+                                  env->GetMethodID(env->FindClass("java/lang/Boolean"), "<init>",
+                                                   "(Z)V"), javaBoolean);
+        } else if (v.type() == json::value_t::string) {
+            const std::string &str = v;
+            return env->NewStringUTF(str.c_str());
+        } else if (v.type() == json::value_t::number_integer) {
+            jint javaInt = static_cast<jint>(v);
+            return env->NewObject(env->FindClass("java/lang/Integer"),
+                                  env->GetMethodID(env->FindClass("java/lang/Integer"), "<init>",
+                                                   "(I)V"), javaInt);
+        } else {
+            // 其他类型，根据实际情况处理
+            // 此处可以抛出异常或者返回空对象，具体取决于实际情况
+            return nullptr;
+        }
+    }
+    catch (...) {
+        return nullptr;
+    }
+}
+
 bool isStringNullOrEmpty(JNIEnv *env, jstring str) {
     if (str == NULL) {
         // 如果字符串为NULL，则为空
@@ -60,22 +91,14 @@ bool isStringNullOrEmpty(JNIEnv *env, jstring str) {
     return result;
 }
 
-// 判断一个字符串是否是有效的 JSON 字符串
-bool isJSON(const std::string& str) {
-    try {
-        nlohmann::json::parse(str); // 尝试解析字符串为 JSON
-        return true;
-    } catch (const std::exception& e) {
-        return false;
-    }
-}
 
 // 添加对象并确保sn号不重复
-void addInfomationManifest(const fs::p2p::InfomationManifest& manifest) {
+void addInfomationManifest(const fs::p2p::InfomationManifest &manifest) {
     // 检查是否存在相同sn号的对象
-    auto it = std::find_if(subDevList.begin(), subDevList.end(), [&manifest](const fs::p2p::InfomationManifest& other) {
-        return manifest.sn == other.sn;
-    });
+    auto it = std::find_if(subDevList.begin(), subDevList.end(),
+                           [&manifest](const fs::p2p::InfomationManifest &other) {
+                               return manifest.sn == other.sn;
+                           });
 
     // 如果不存在相同sn号的对象，则添加到向量中
     if (it == subDevList.end()) {
@@ -91,9 +114,9 @@ std::string jstringToString(JNIEnv *env, jstring jstr) {
     return result;
 }
 
-void removeCallback(JNIEnv* env,jobject objectToRemove) {
+void removeCallback(JNIEnv *env, jobject objectToRemove) {
     // 查找要删除的对象
-    auto it = std::find_if(callbacks.begin(), callbacks.end(), [&](const jobject& obj) {
+    auto it = std::find_if(callbacks.begin(), callbacks.end(), [&](const jobject &obj) {
         return env->IsSameObject(obj, objectToRemove);
     });
 
@@ -130,11 +153,11 @@ jobject convertToJavaServices(JNIEnv *env, std::list<fs::p2p::Service> services)
 
         // 遍历 C++ 中的 propertys，将其转换为 Java 中的对象
         for (const auto &entry: service.propertys) {
-            std::string val = entry.second.dump();
+            jobject val = get_json_value(env, entry.second);
             // 将键值对放入 Map 中
             env->CallObjectMethod(javaPropertysMap, putMethod,
                                   env->NewStringUTF(entry.first.c_str()),
-                                  env->NewStringUTF(val.c_str()));
+                                  val);
         }
 
         // 创建 Service 对象并设置字段值
@@ -175,11 +198,11 @@ jobject convertToJavaMethods(JNIEnv *env, std::list<fs::p2p::Method> methods) {
 
         // 遍历 C++ 中的 propertys，将其转换为 Java 中的对象
         for (const auto &entry: method.params) {
-            std::string val = entry.second.dump();
+            auto val = get_json_value(env, entry.second);
             // 将键值对放入 Map 中
             env->CallObjectMethod(javaPropertysMap, putMethod,
                                   env->NewStringUTF(entry.first.c_str()),
-                                  env->NewStringUTF(val.c_str()));
+                                  val);
         }
 
         // 创建 Service 对象并设置字段值
@@ -217,11 +240,11 @@ jobject convertToJavaEvents(JNIEnv *env, std::list<fs::p2p::Event> events) {
 
         // 遍历 C++ 中的 propertys，将其转换为 Java 中的对象
         for (const auto &entry: event.params) {
-            std::string val = entry.second.dump();
+            jobject val = get_json_value(env, entry.second);
             // 将键值对放入 Map 中
             env->CallObjectMethod(javaPropertysMap, putMethod,
                                   env->NewStringUTF(entry.first.c_str()),
-                                  env->NewStringUTF(val.c_str()));
+                                  val);
         }
 
         // 创建 Service 对象并设置字段值
@@ -278,20 +301,27 @@ jobject convertRequestToJava(JNIEnv *env, const fs::p2p::Request &request) {
     const char *timeStr = request.time.c_str();
     jfieldID actionFieldID = NULL;
     jobject actionEnum = NULL;
-    if(request.action==fs::p2p::Request::Action::Action_Method){
-        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Method", "Lcom/library/natives/Action;");
-    }else if(request.action==fs::p2p::Request::Action::Action_Read){
-        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Read", "Lcom/library/natives/Action;");
-    }else if(request.action==fs::p2p::Request::Action::Action_Write){
-        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Write", "Lcom/library/natives/Action;");
-    }else if(request.action==fs::p2p::Request::Action::Action_Notify){
-        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Notify", "Lcom/library/natives/Action;");
-    }else if(request.action==fs::p2p::Request::Action::Action_Event){
-        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Event", "Lcom/library/natives/Action;");
-    }else if(request.action==fs::p2p::Request::Action::Action_Broadcast){
-        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Broadcast", "Lcom/library/natives/Action;");
-    }else{
-        actionFieldID= env->GetStaticFieldID(actionCls, "Action_Unknown", "Lcom/library/natives/Action;");
+    if (request.action == fs::p2p::Request::Action::Action_Method) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Method",
+                                              "Lcom/library/natives/Action;");
+    } else if (request.action == fs::p2p::Request::Action::Action_Read) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Read",
+                                              "Lcom/library/natives/Action;");
+    } else if (request.action == fs::p2p::Request::Action::Action_Write) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Write",
+                                              "Lcom/library/natives/Action;");
+    } else if (request.action == fs::p2p::Request::Action::Action_Notify) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Notify",
+                                              "Lcom/library/natives/Action;");
+    } else if (request.action == fs::p2p::Request::Action::Action_Event) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Event",
+                                              "Lcom/library/natives/Action;");
+    } else if (request.action == fs::p2p::Request::Action::Action_Broadcast) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Broadcast",
+                                              "Lcom/library/natives/Action;");
+    } else {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Unknown",
+                                              "Lcom/library/natives/Action;");
     }
     if (actionFieldID != NULL) {
         actionEnum = env->GetStaticObjectField(actionCls, actionFieldID);
@@ -487,16 +517,16 @@ std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &ma
         // 将 Java String 转换为 C++ std::string
         std::string cppKey = jstringToString(env, key);
         jstring value = static_cast<jstring>(env->CallObjectMethod(entry, getValueMethod));
-        if (!isStringNullOrEmpty(env,value)){
-            std::string cppValue =jstringToString(env, value);
+        if (!isStringNullOrEmpty(env, value)) {
+            std::string cppValue = jstringToString(env, value);
             try {
                 // 创建 ordered_json 对象并存入 C++ Map
                 ordered_json jsonValue = ordered_json::parse(cppValue);
                 cppMap[cppKey] = jsonValue;
-            } catch (const std::exception& e) {
+            } catch (const std::exception &e) {
                 cppMap[cppKey] = cppValue;
             }
-        }else{
+        } else {
             cppMap[cppKey] = "";
         }
         // 释放局部引用
@@ -512,7 +542,8 @@ std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &ma
     return cppMap;
 }
 
-fs::p2p::Service processServiceList(JNIEnv *env, jobject &servicesList, std::list<fs::p2p::Service> services) {
+fs::p2p::Service
+processServiceList(JNIEnv *env, jobject &servicesList, std::list<fs::p2p::Service> services) {
 // 获取 List 类型的 Class 对象
     jclass listClass = env->GetObjectClass(servicesList);
 
@@ -569,7 +600,8 @@ fs::p2p::Service processServiceList(JNIEnv *env, jobject &servicesList, std::lis
     }
 }
 
-fs::p2p::Method processMethodList(JNIEnv *env, jobject &methodsList, std::list<fs::p2p::Method> methods) {
+fs::p2p::Method
+processMethodList(JNIEnv *env, jobject &methodsList, std::list<fs::p2p::Method> methods) {
     // 获取 List 类型的 Class 对象
     jclass listClass = env->GetObjectClass(methodsList);
 
@@ -685,7 +717,7 @@ std::list<fs::p2p::Method> convertJavaToMethods(JNIEnv *env, jobject &methodsLis
     return methods;
 }
 
-fs::p2p::Method convertJavaToMethod(JNIEnv* env, jobject methodObject) {
+fs::p2p::Method convertJavaToMethod(JNIEnv *env, jobject methodObject) {
     fs::p2p::Method cppMethod;
 
     // Get class
@@ -693,8 +725,8 @@ fs::p2p::Method convertJavaToMethod(JNIEnv* env, jobject methodObject) {
 
     // Get name field
     jfieldID nameFieldID = env->GetFieldID(serviceClass, "name", "Ljava/lang/String;");
-    jstring nameJava = (jstring)env->GetObjectField(methodObject, nameFieldID);
-    const char* nameCStr = env->GetStringUTFChars(nameJava, nullptr);
+    jstring nameJava = (jstring) env->GetObjectField(methodObject, nameFieldID);
+    const char *nameCStr = env->GetStringUTFChars(nameJava, nullptr);
     cppMethod.name = std::string(nameCStr);
     env->ReleaseStringUTFChars(nameJava, nameCStr);
 
@@ -704,16 +736,17 @@ fs::p2p::Method convertJavaToMethod(JNIEnv* env, jobject methodObject) {
     cppMethod.reason_code = reasonCodeJava;
 
     // Get reason_string
-    jfieldID reasonStringFieldID = env->GetFieldID(serviceClass, "reason_string", "Ljava/lang/String;");
-    jstring reasonStringJava = (jstring)env->GetObjectField(methodObject, reasonStringFieldID);
-    const char* reasonStringCStr = env->GetStringUTFChars(reasonStringJava, nullptr);
+    jfieldID reasonStringFieldID = env->GetFieldID(serviceClass, "reason_string",
+                                                   "Ljava/lang/String;");
+    jstring reasonStringJava = (jstring) env->GetObjectField(methodObject, reasonStringFieldID);
+    const char *reasonStringCStr = env->GetStringUTFChars(reasonStringJava, nullptr);
     cppMethod.reason_string = std::string(reasonStringCStr);
     env->ReleaseStringUTFChars(reasonStringJava, reasonStringCStr);
 
     return cppMethod;
 }
 
-fs::p2p::Service convertJavaToService(JNIEnv* env, jobject serviceObject) {
+fs::p2p::Service convertJavaToService(JNIEnv *env, jobject serviceObject) {
     fs::p2p::Service cppService;
 
     // Get class
@@ -721,8 +754,8 @@ fs::p2p::Service convertJavaToService(JNIEnv* env, jobject serviceObject) {
 
     // Get name field
     jfieldID nameFieldID = env->GetFieldID(serviceClass, "name", "Ljava/lang/String;");
-    jstring nameJava = (jstring)env->GetObjectField(serviceObject, nameFieldID);
-    const char* nameCStr = env->GetStringUTFChars(nameJava, nullptr);
+    jstring nameJava = (jstring) env->GetObjectField(serviceObject, nameFieldID);
+    const char *nameCStr = env->GetStringUTFChars(nameJava, nullptr);
     cppService.name = std::string(nameCStr);
     env->ReleaseStringUTFChars(nameJava, nameCStr);
 
@@ -732,9 +765,10 @@ fs::p2p::Service convertJavaToService(JNIEnv* env, jobject serviceObject) {
     cppService.reason_code = reasonCodeJava;
 
     // Get reason_string
-    jfieldID reasonStringFieldID = env->GetFieldID(serviceClass, "reason_string", "Ljava/lang/String;");
-    jstring reasonStringJava = (jstring)env->GetObjectField(serviceObject, reasonStringFieldID);
-    const char* reasonStringCStr = env->GetStringUTFChars(reasonStringJava, nullptr);
+    jfieldID reasonStringFieldID = env->GetFieldID(serviceClass, "reason_string",
+                                                   "Ljava/lang/String;");
+    jstring reasonStringJava = (jstring) env->GetObjectField(serviceObject, reasonStringFieldID);
+    const char *reasonStringCStr = env->GetStringUTFChars(reasonStringJava, nullptr);
     cppService.reason_string = std::string(reasonStringCStr);
     env->ReleaseStringUTFChars(reasonStringJava, reasonStringCStr);
 
@@ -803,7 +837,8 @@ std::list<fs::p2p::Service> convertJavaToServices(JNIEnv *env, jobject &services
     return servies;
 }
 
-fs::p2p::Event processEventList(JNIEnv *env, jobject &eventsList, std::list<fs::p2p::Event> events) {
+fs::p2p::Event
+processEventList(JNIEnv *env, jobject &eventsList, std::list<fs::p2p::Event> events) {
 // 获取 List 类型的 Class 对象
     jclass listClass = env->GetObjectClass(eventsList);
 
@@ -849,7 +884,7 @@ fs::p2p::Event processEventList(JNIEnv *env, jobject &eventsList, std::list<fs::
     }
 }
 
-fs::p2p::Event convertJavaEvent(JNIEnv* env, jobject eventObject) {
+fs::p2p::Event convertJavaEvent(JNIEnv *env, jobject eventObject) {
     fs::p2p::Event cppEvent;
 
     // Get class
@@ -857,8 +892,8 @@ fs::p2p::Event convertJavaEvent(JNIEnv* env, jobject eventObject) {
 
     // Get name field
     jfieldID nameFieldID = env->GetFieldID(eventClass, "name", "Ljava/lang/String;");
-    jstring nameJava = (jstring)env->GetObjectField(eventObject, nameFieldID);
-    const char* nameCStr = env->GetStringUTFChars(nameJava, nullptr);
+    jstring nameJava = (jstring) env->GetObjectField(eventObject, nameFieldID);
+    const char *nameCStr = env->GetStringUTFChars(nameJava, nullptr);
     cppEvent.name = std::string(nameCStr);
     env->ReleaseStringUTFChars(nameJava, nameCStr);
 
@@ -886,11 +921,11 @@ fs::p2p::Event convertJavaEvent(JNIEnv* env, jobject eventObject) {
     while (env->CallBooleanMethod(iterator, hasNextMethod)) {
         jobject entry = env->CallObjectMethod(iterator, nextMethod);
 
-        jstring keyJava = (jstring)env->CallObjectMethod(entry, getKeyMethod);
-        jstring valueJava = (jstring)env->CallObjectMethod(entry, getValueMethod);
+        jstring keyJava = (jstring) env->CallObjectMethod(entry, getKeyMethod);
+        jstring valueJava = (jstring) env->CallObjectMethod(entry, getValueMethod);
 
-        const char* keyCStr = env->GetStringUTFChars(keyJava, nullptr);
-        const char* valueCStr = env->GetStringUTFChars(valueJava, nullptr);
+        const char *keyCStr = env->GetStringUTFChars(keyJava, nullptr);
+        const char *valueCStr = env->GetStringUTFChars(valueJava, nullptr);
 
         cppEvent.params[std::string(keyCStr)] = std::string(valueCStr);
 
@@ -959,7 +994,8 @@ fs::p2p::Request getRequest(JNIEnv *env, jobject &request) {
 
     // 获取字段ID
     jfieldID iidField = env->GetFieldID(connParamsClass, "iid", "Ljava/lang/String;");
-    jfieldID actionField = env->GetFieldID(connParamsClass, "action", "Lcom/library/natives/Action;");
+    jfieldID actionField = env->GetFieldID(connParamsClass, "action",
+                                           "Lcom/library/natives/Action;");
     jfieldID ackField = env->GetFieldID(connParamsClass, "ack", "Ljava/lang/String;");
     jfieldID timeField = env->GetFieldID(connParamsClass, "time", "Ljava/lang/String;");
     jfieldID payloadField = env->GetFieldID(connParamsClass, "payload",
