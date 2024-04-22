@@ -12,6 +12,16 @@ public class FsPipelineJNI {
     }
 
     /**
+     * 设置log开关
+     */
+    public static native void logEnable(boolean isEnable);
+
+    /**
+     * 查看log开关是否开启
+     */
+    public static native boolean isLogEnable();
+
+    /**
      * 初始化fs_p2p管道
      *
      * @param connParams 初始化参数

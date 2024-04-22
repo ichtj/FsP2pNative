@@ -68,6 +68,16 @@
             android:onClick="clearTvClick"
             android:singleLine="true"
             android:text="清空" />
+        <Button
+            android:id="@+id/btnPrintLog"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="printLogClick"
+            android:singleLine="true"
+            android:text="日志:开" />
     </LinearLayout>
 
     <LinearLayout

@@ -44,6 +44,18 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
     return JNI_VERSION_1_6;
 }
 
+JNIEXPORT void JNICALL
+Java_com_library_natives_FsPipelineJNI_logEnable(JNIEnv *env, jclass clz,
+                                                jboolean isEnable) {
+    setLoggingEnabled(isEnable);
+}
+
+
+JNIEXPORT jboolean JNICALL
+Java_com_library_natives_FsPipelineJNI_isLogEnable(JNIEnv *env, jclass clz) {
+    return getLoggingEnabled();
+}
+
 JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_init(JNIEnv *env, jclass clazz,
                                             jobject conn_params) {
