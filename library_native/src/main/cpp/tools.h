@@ -701,7 +701,7 @@ fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
             jobject methodObj = env->CallObjectMethod(methodsObj, methodsGetMethodID, i);
             jclass methodClass = env->GetObjectClass(methodObj);
 
-            jfieldID nameFieldID = env->GetFieldID(serviceClass, "name", "Ljava/lang/String;");
+            jfieldID nameFieldID = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
             jstring nameString = (jstring) env->GetObjectField(methodObj, nameFieldID);
             const char *name = env->GetStringUTFChars(nameString, nullptr);
             std::string nameValue(name);
@@ -710,7 +710,7 @@ fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
             jfieldID reasonCodeField = env->GetFieldID(methodClass, "reason_code", "I");
             jint reasonCode = env->GetIntField(methodObj, reasonCodeField);
 
-            jfieldID propertiesFieldID = env->GetFieldID(methodClass, "properties", "Ljava/util/Map;");
+            jfieldID propertiesFieldID = env->GetFieldID(methodClass, "params", "Ljava/util/Map;");
             jobject propertiesObj = env->GetObjectField(methodObj, propertiesFieldID);
             jclass mapClass = env->GetObjectClass(propertiesObj);
             jmethodID entrySetMethodID = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
@@ -724,7 +724,7 @@ fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
 
             std::map<std::string, ordered_json> propertiesMap =convertOrderedJsons(env,propertiesObj);
 
-            jfieldID reasonStringFieldID = env->GetFieldID(serviceClass, "reason_string", "Ljava/lang/String;");
+            jfieldID reasonStringFieldID = env->GetFieldID(methodClass, "reason_string", "Ljava/lang/String;");
             jstring reasonStringString = (jstring)env->GetObjectField(methodObj, reasonStringFieldID);
             const char* reasonString = env->GetStringUTFChars(reasonStringString, nullptr);
             std::string reasonStringValue(reasonString);
@@ -751,13 +751,13 @@ fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
             jobject eventObj = env->CallObjectMethod(eventsObj, eventsGetMethodID, i);
             jclass eventClass = env->GetObjectClass(eventObj);
 
-            jfieldID nameFieldID = env->GetFieldID(serviceClass, "name", "Ljava/lang/String;");
+            jfieldID nameFieldID = env->GetFieldID(eventClass, "name", "Ljava/lang/String;");
             jstring nameString = (jstring) env->GetObjectField(eventObj, nameFieldID);
             const char *name = env->GetStringUTFChars(nameString, nullptr);
             std::string nameValue(name);
             env->ReleaseStringUTFChars(nameString, name);
 
-            jfieldID propertiesFieldID = env->GetFieldID(methodClass, "properties", "Ljava/util/Map;");
+            jfieldID propertiesFieldID = env->GetFieldID(eventClass, "properties", "Ljava/util/Map;");
             jobject propertiesObj = env->GetObjectField(eventObj, propertiesFieldID);
             jclass mapClass = env->GetObjectClass(propertiesObj);
             jmethodID entrySetMethodID = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
