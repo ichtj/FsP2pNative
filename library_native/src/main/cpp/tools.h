@@ -113,6 +113,50 @@ std::string jstringToString(JNIEnv *env, jstring jstr) {
     env->ReleaseStringUTFChars(jstr, cstr);
     return result;
 }
+std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &maps) {
+    std::map<std::string, ordered_json> cppMap;
+    // 获取 Java Map 的类和方法信息
+    jclass mapClass = env->GetObjectClass(maps);
+    jmethodID entrySetMethod = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
+    jclass setClass = env->FindClass("java/util/Set");
+    jmethodID iteratorMethod = env->GetMethodID(setClass, "iterator", "()Ljava/util/Iterator;");
+    jclass iteratorClass = env->FindClass("java/util/Iterator");
+    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+    jclass entryClass = env->FindClass("java/util/Map$Entry");
+    jmethodID getKeyMethod = env->GetMethodID(entryClass, "getKey", "()Ljava/lang/Object;");
+    jmethodID getValueMethod = env->GetMethodID(entryClass, "getValue", "()Ljava/lang/Object;");
+
+    // 获取 Map 的迭代器
+    jobject entrySet = env->CallObjectMethod(maps, entrySetMethod);
+    jobject iterator = env->CallObjectMethod(entrySet, iteratorMethod);
+
+    // 遍历 Map，并将数据转换为 C++ Map
+    while (env->CallBooleanMethod(iterator, env->GetMethodID(iteratorClass, "hasNext", "()Z"))) {
+        jobject entry = env->CallObjectMethod(iterator, nextMethod);
+        jstring key = static_cast<jstring>(env->CallObjectMethod(entry, getKeyMethod));
+        // 将 Java String 转换为 C++ std::string
+        std::string cppKey = jstringToString(env, key);
+        jstring value = static_cast<jstring>(env->CallObjectMethod(entry, getValueMethod));
+        if (!isStringNullOrEmpty(env, value)) {
+            std::string cppValue = jstringToString(env, value);
+            try {
+                // 创建 ordered_json 对象并存入 C++ Map
+                ordered_json jsonValue = ordered_json::parse(cppValue);
+                cppMap[cppKey] = jsonValue;
+            } catch (const std::exception &e) {
+                cppMap[cppKey] = cppValue;
+            }
+        } else {
+            cppMap[cppKey] = "";
+        }
+        env->DeleteLocalRef(entry);
+        env->DeleteLocalRef(key);
+        env->DeleteLocalRef(value);
+    }
+    env->DeleteLocalRef(iterator);
+    env->DeleteLocalRef(entrySet);
+    return cppMap;
+}
 
 void removeCallback(JNIEnv *env, jobject objectToRemove) {
     // 查找要删除的对象
@@ -388,88 +432,359 @@ void processParams(JNIEnv *env, jobject paramsObj, std::map<std::string, ordered
     }
 }
 
+std::list<fs::p2p::Method> convertJavaToMethods(JNIEnv *env, jobject &methodsList) {
+    // Get List class and its iterator method
+    jclass listClass = env->GetObjectClass(methodsList);
+    jmethodID iteratorMethod = env->GetMethodID(listClass, "iterator", "()Ljava/util/Iterator;");
+
+    // Get Iterator class and its hasNext and next methods
+    jclass iteratorClass = env->FindClass("java/util/Iterator");
+    jmethodID hasNextMethod = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+    // Get Method class and its fields
+    jclass methodClass = env->FindClass("com/library/natives/Method");
+    jfieldID nameField = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
+    jfieldID paramsField = env->GetFieldID(methodClass, "params", "Ljava/util/Map;");
+    jfieldID reasonCodeField = env->GetFieldID(methodClass, "reason_code", "I");
+    jfieldID reasonStringField = env->GetFieldID(methodClass, "reason_string",
+                                                 "Ljava/lang/String;");
+    // Create C++ std::list<Method>
+    std::list<fs::p2p::Method> methods;
+    // Call List's iterator method to get an iterator
+    jobject iterator = env->CallObjectMethod(methodsList, iteratorMethod);
+
+    // Loop through the list using the iterator
+    while (env->CallBooleanMethod(iterator, hasNextMethod)) {
+        // Call iterator's next method to get the next object in the list
+        jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
+
+        // Create C++ Method object
+        fs::p2p::Method method;
+
+        // Get values from Java Method object
+        jstring name = (jstring) env->GetObjectField(methodObj, nameField);
+        method.name = env->GetStringUTFChars(name, nullptr);
+
+        jint reasonCode = env->GetIntField(methodObj, reasonCodeField);
+        method.reason_code = static_cast<int>(reasonCode);
+
+        jstring reasonString = (jstring) env->GetObjectField(methodObj, reasonStringField);
+        method.reason_string = env->GetStringUTFChars(reasonString, nullptr);
+
+        // Get Map object from params field
+        jobject paramsObj = env->GetObjectField(methodObj, paramsField);
+
+        // Process Map entries
+        processParams(env, paramsObj, method.params);
+
+        // Add the Method object to the std::list
+        methods.push_back(method);
+
+        // Release local references
+        //env->ReleaseStringUTFChars(name, method.name.c_str());
+        //env->ReleaseStringUTFChars(reasonString, method.reason_string.c_str());
+    }
+
+    // Release local references
+    env->DeleteLocalRef(iterator);
+    return methods;
+}
+
+std::list<fs::p2p::Service> convertJavaToServices(JNIEnv *env, jobject &servicesList) {
+    // Get List class and its iterator method
+    jclass listClass = env->GetObjectClass(servicesList);
+    jmethodID iteratorMethod = env->GetMethodID(listClass, "iterator", "()Ljava/util/Iterator;");
+
+    // Get Iterator class and its hasNext and next methods
+    jclass iteratorClass = env->FindClass("java/util/Iterator");
+    jmethodID hasNextMethod = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+    // Get Method class and its fields
+    jclass methodClass = env->FindClass("com/library/natives/Service");
+    jfieldID nameField = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
+    jfieldID paramsField = env->GetFieldID(methodClass, "propertys", "Ljava/util/Map;");
+    jfieldID reasonCodeField = env->GetFieldID(methodClass, "reason_code", "I");
+    jfieldID reasonStringField = env->GetFieldID(methodClass, "reason_string",
+                                                 "Ljava/lang/String;");
+    // Create C++ std::list<Method>
+    std::list<fs::p2p::Service> servies;
+
+    // Call List's iterator method to get an iterator
+    jobject iterator = env->CallObjectMethod(servicesList, iteratorMethod);
+
+    // Loop through the list using the iterator
+    while (env->CallBooleanMethod(iterator, hasNextMethod)) {
+        // Call iterator's next method to get the next object in the list
+        jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
+
+        // Create C++ Method object
+        fs::p2p::Service service;
+
+        // Get values from Java Method object
+        jstring name = (jstring) env->GetObjectField(methodObj, nameField);
+        service.name = env->GetStringUTFChars(name, nullptr);
+
+        jint reasonCode = env->GetIntField(methodObj, reasonCodeField);
+        service.reason_code = static_cast<int>(reasonCode);
+
+        jstring reasonString = (jstring) env->GetObjectField(methodObj, reasonStringField);
+        service.reason_string = env->GetStringUTFChars(reasonString, nullptr);
+
+        // Get Map object from params field
+        jobject paramsObj = env->GetObjectField(methodObj, paramsField);
+
+        // Process Map entries
+        processParams(env, paramsObj, service.propertys);
+
+        // Add the Method object to the std::list
+        servies.push_back(service);
+
+//        // Release local references
+//        env->ReleaseStringUTFChars(name, method.name.c_str());
+//        env->ReleaseStringUTFChars(reasonString, method.reason_string.c_str());
+    }
+
+    // Use the 'methods' list as needed...
+
+    // Release local references
+    //env->DeleteLocalRef(iterator);
+    return servies;
+}
+
+std::list<fs::p2p::Event> convertJavaToEvents(JNIEnv *env, jobject &eventsList) {
+    // Get List class and its iterator method
+    jclass listClass = env->GetObjectClass(eventsList);
+    jmethodID iteratorMethod = env->GetMethodID(listClass, "iterator", "()Ljava/util/Iterator;");
+
+    // Get Iterator class and its hasNext and next methods
+    jclass iteratorClass = env->FindClass("java/util/Iterator");
+    jmethodID hasNextMethod = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+    // Get Method class and its fields
+    jclass methodClass = env->FindClass("com/library/natives/Event");
+    jfieldID nameField = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
+    jfieldID paramsField = env->GetFieldID(methodClass, "params", "Ljava/util/Map;");
+
+    // Create C++ std::list<Method>
+    std::list<fs::p2p::Event> events;
+
+    // Call List's iterator method to get an iterator
+    jobject iterator = env->CallObjectMethod(eventsList, iteratorMethod);
+
+    // Loop through the list using the iterator
+    while (env->CallBooleanMethod(iterator, hasNextMethod)) {
+        // Call iterator's next method to get the next object in the list
+        jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
+
+        // Create C++ Method object
+        fs::p2p::Event event;
+
+        // Get values from Java Method object
+        jstring name = (jstring) env->GetObjectField(methodObj, nameField);
+        event.name = env->GetStringUTFChars(name, nullptr);
+
+
+        // Get Map object from params field
+        jobject paramsObj = env->GetObjectField(methodObj, paramsField);
+
+        // Process Map entries
+        processParams(env, paramsObj, event.params);
+
+        // Add the Method object to the std::list
+        events.push_back(event);
+
+//        // Release local references
+//        env->ReleaseStringUTFChars(name, event.name.c_str());
+    }
+
+    // Release local references
+//    env->DeleteLocalRef(iterator);
+    return events;
+}
+
 fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
-    // 获取 Payload 类的引用
     jclass payloadClass = env->GetObjectClass(payload);
-
-    // 获取 devices 字段的 ID
     jfieldID devicesFieldID = env->GetFieldID(payloadClass, "devices", "Ljava/util/Map;");
-
-    // 获取 devices 字段的值
     jobject devicesObj = env->GetObjectField(payload, devicesFieldID);
-
-    // 获取 Map 的类信息
     jclass mapClass = env->GetObjectClass(devicesObj);
-
-    // 获取 Map 的 entrySet 方法 ID
     jmethodID entrySetMethodID = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
-
-    // 调用 entrySet 方法获取 Map 的 entrySet
     jobject entrySetObj = env->CallObjectMethod(devicesObj, entrySetMethodID);
-
-    // 获取 Set 的类信息
     jclass setClass = env->GetObjectClass(entrySetObj);
-
-    // 获取 Set 的 iterator 方法 ID
     jmethodID iteratorMethodID = env->GetMethodID(setClass, "iterator", "()Ljava/util/Iterator;");
-
-    // 调用 iterator 方法获取 Set 的 iterator
     jobject iteratorObj = env->CallObjectMethod(entrySetObj, iteratorMethodID);
-
-    // 获取 Iterator 的类信息
     jclass iteratorClass = env->GetObjectClass(iteratorObj);
-
-    // 获取 Iterator 的 hasNext 方法 ID 和 next 方法 ID
     jmethodID hasNextMethodID = env->GetMethodID(iteratorClass, "hasNext", "()Z");
     jmethodID nextMethodID = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
-    // 将 Device 对象添加到 Payload 中
-    // 这里可以根据需要，将 Device 对象添加到 C++ 的 Payload 结构体中
-    // 例如，将 Device 对象放入 C++ Payload 结构体的 devices 字段中
-    fs::p2p::Payload getPayload;  // 请确保在适当的位置创建 Payload 对象
+    fs::p2p::Payload getPayload;
 
-    // 遍历 Map 的 entrySet
     while (env->CallBooleanMethod(iteratorObj, hasNextMethodID)) {
-        // 调用 next 方法获取 Map.Entry 对象
         jobject entryObj = env->CallObjectMethod(iteratorObj, nextMethodID);
-
-        // 获取 Map.Entry 的类信息
         jclass entryClass = env->GetObjectClass(entryObj);
-
-        // 获取 Map.Entry 的 getKey 和 getValue 方法 ID
         jmethodID getKeyMethodID = env->GetMethodID(entryClass, "getKey", "()Ljava/lang/Object;");
         jmethodID getValueMethodID = env->GetMethodID(entryClass, "getValue",
                                                       "()Ljava/lang/Object;");
-
-        // 调用 getKey 和 getValue 方法获取 key 和 value 对象
         jstring keyObj = (jstring) env->CallObjectMethod(entryObj, getKeyMethodID);
         jobject deviceObj = env->CallObjectMethod(entryObj, getValueMethodID);
-
-        // 将 key 和 device 对象转换为 C++ 字符串和 Device 对象
         const char *key = env->GetStringUTFChars(keyObj, nullptr);
-
-        // 获取 Device 类的引用
         jclass deviceClass = env->GetObjectClass(deviceObj);
-
-        // 获取 Device 类的字段 ID
         jfieldID snFieldID = env->GetFieldID(deviceClass, "sn", "Ljava/lang/String;");
         jfieldID productIdFieldID = env->GetFieldID(deviceClass, "product_id",
                                                     "Ljava/lang/String;");
 
-        // 获取 Device 对象的字段值
         jstring snObj = (jstring) env->GetObjectField(deviceObj, snFieldID);
         jstring productIdObj = (jstring) env->GetObjectField(deviceObj, productIdFieldID);
-
-        // 将 Java 字符串转换为 C++ 字符串
         const char *sn = env->GetStringUTFChars(snObj, nullptr);
         const char *productId = env->GetStringUTFChars(productIdObj, nullptr);
 
-        // 创建 C++ 的 Device 对象并填充数据
+        std::list<fs::p2p::Service> services;
+        jfieldID servicesFieldID = env->GetFieldID(deviceClass, "services", "Ljava/util/List;");
+        jobject servicesObj = env->GetObjectField(deviceObj, servicesFieldID);
+        jclass listClass = env->GetObjectClass(servicesObj);
+        jmethodID sizeMethodID = env->GetMethodID(listClass, "size", "()I");
+        jmethodID getMethodID = env->GetMethodID(listClass, "get", "(I)Ljava/lang/Object;");
+        jint size = env->CallIntMethod(servicesObj, sizeMethodID);
+
+        for (int i = 0; i < size; ++i) {
+            jobject serviceObj = env->CallObjectMethod(servicesObj, getMethodID, i);
+            jclass serviceClass = env->GetObjectClass(serviceObj);
+
+            jfieldID nameFieldID = env->GetFieldID(serviceClass, "name", "Ljava/lang/String;");
+            jstring nameString = (jstring) env->GetObjectField(serviceObj, nameFieldID);
+            const char *name = env->GetStringUTFChars(nameString, nullptr);
+            std::string nameValue(name);
+            env->ReleaseStringUTFChars(nameString, name);
+
+            jfieldID reasonCodeField = env->GetFieldID(serviceClass, "reason_code", "I");
+            jint reasonCode = env->GetIntField(serviceObj, reasonCodeField);
+
+            jfieldID propertiesFieldID = env->GetFieldID(serviceClass, "propertys", "Ljava/util/Map;");
+            jobject propertiesObj = env->GetObjectField(serviceObj, propertiesFieldID);
+            jclass mapClass = env->GetObjectClass(propertiesObj);
+            jmethodID entrySetMethodID = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
+            jobject entrySetObj = env->CallObjectMethod(propertiesObj, entrySetMethodID);
+            jclass setClass = env->GetObjectClass(entrySetObj);
+            jmethodID iteratorMethodID = env->GetMethodID(setClass, "iterator", "()Ljava/util/Iterator;");
+            jobject iteratorObj = env->CallObjectMethod(entrySetObj, iteratorMethodID);
+            jclass iteratorClass = env->GetObjectClass(iteratorObj);
+            jmethodID hasNextMethodID = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+            jmethodID nextMethodID = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+            std::map<std::string, ordered_json> serviceProperties= convertOrderedJsons(env,propertiesObj);
+
+            jfieldID reasonStringFieldID = env->GetFieldID(serviceClass, "reason_string", "Ljava/lang/String;");
+            jstring reasonStringString = (jstring)env->GetObjectField(serviceObj, reasonStringFieldID);
+            const char* reasonString = env->GetStringUTFChars(reasonStringString, nullptr);
+            std::string reasonStringValue(reasonString);
+            env->ReleaseStringUTFChars(reasonStringString, reasonString);
+
+            fs::p2p::Service cppService;
+            cppService.name = nameValue;
+            cppService.propertys = serviceProperties;
+            cppService.reason_code = static_cast<int>(reasonCode);
+            cppService.reason_string = reasonString;
+            services.push_back(cppService);
+        }
+
+        std::list<fs::p2p::Method> methods;
+        jfieldID methodsFieldID = env->GetFieldID(deviceClass, "methods", "Ljava/util/List;");
+        jobject methodsObj = env->GetObjectField(deviceObj, methodsFieldID);
+        jclass methodsListClass = env->GetObjectClass(methodsObj);
+        jmethodID methodsSizeMethodID = env->GetMethodID(methodsListClass, "size", "()I");
+        jmethodID methodsGetMethodID = env->GetMethodID(methodsListClass, "get",
+                                                        "(I)Ljava/lang/Object;");
+        jint methodsSize = env->CallIntMethod(methodsObj, methodsSizeMethodID);
+
+        for (int i = 0; i < methodsSize; ++i) {
+            jobject methodObj = env->CallObjectMethod(methodsObj, methodsGetMethodID, i);
+            jclass methodClass = env->GetObjectClass(methodObj);
+
+            jfieldID nameFieldID = env->GetFieldID(serviceClass, "name", "Ljava/lang/String;");
+            jstring nameString = (jstring) env->GetObjectField(methodObj, nameFieldID);
+            const char *name = env->GetStringUTFChars(nameString, nullptr);
+            std::string nameValue(name);
+            env->ReleaseStringUTFChars(nameString, name);
+
+            jfieldID reasonCodeField = env->GetFieldID(methodClass, "reason_code", "I");
+            jint reasonCode = env->GetIntField(methodObj, reasonCodeField);
+
+            jfieldID propertiesFieldID = env->GetFieldID(methodClass, "properties", "Ljava/util/Map;");
+            jobject propertiesObj = env->GetObjectField(methodObj, propertiesFieldID);
+            jclass mapClass = env->GetObjectClass(propertiesObj);
+            jmethodID entrySetMethodID = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
+            jobject entrySetObj = env->CallObjectMethod(propertiesObj, entrySetMethodID);
+            jclass setClass = env->GetObjectClass(entrySetObj);
+            jmethodID iteratorMethodID = env->GetMethodID(setClass, "iterator", "()Ljava/util/Iterator;");
+            jobject iteratorObj = env->CallObjectMethod(entrySetObj, iteratorMethodID);
+            jclass iteratorClass = env->GetObjectClass(iteratorObj);
+            jmethodID hasNextMethodID = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+            jmethodID nextMethodID = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+            std::map<std::string, ordered_json> propertiesMap =convertOrderedJsons(env,propertiesObj);
+
+            jfieldID reasonStringFieldID = env->GetFieldID(serviceClass, "reason_string", "Ljava/lang/String;");
+            jstring reasonStringString = (jstring)env->GetObjectField(methodObj, reasonStringFieldID);
+            const char* reasonString = env->GetStringUTFChars(reasonStringString, nullptr);
+            std::string reasonStringValue(reasonString);
+            env->ReleaseStringUTFChars(reasonStringString, reasonString);
+
+            fs::p2p::Method cppService;
+            cppService.name = nameValue;
+            cppService.reason_code = static_cast<int>(reasonCode);
+            cppService.params = propertiesMap;
+            cppService.reason_string = reasonString;
+            methods.push_back(cppService);
+        }
+
+        std::list<fs::p2p::Event> events;
+        jfieldID eventsFieldID = env->GetFieldID(deviceClass, "events", "Ljava/util/List;");
+        jobject eventsObj = env->GetObjectField(deviceObj, eventsFieldID);
+        jclass eventsListClass = env->GetObjectClass(eventsObj);
+        jmethodID eventsSizeMethodID = env->GetMethodID(eventsListClass, "size", "()I");
+        jmethodID eventsGetMethodID = env->GetMethodID(eventsListClass, "get",
+                                                        "(I)Ljava/lang/Object;");
+        jint eventsSize = env->CallIntMethod(eventsObj, eventsSizeMethodID);
+
+        for (int i = 0; i < eventsSize; ++i) {
+            jobject eventObj = env->CallObjectMethod(eventsObj, eventsGetMethodID, i);
+            jclass eventClass = env->GetObjectClass(eventObj);
+
+            jfieldID nameFieldID = env->GetFieldID(serviceClass, "name", "Ljava/lang/String;");
+            jstring nameString = (jstring) env->GetObjectField(eventObj, nameFieldID);
+            const char *name = env->GetStringUTFChars(nameString, nullptr);
+            std::string nameValue(name);
+            env->ReleaseStringUTFChars(nameString, name);
+
+            jfieldID propertiesFieldID = env->GetFieldID(methodClass, "properties", "Ljava/util/Map;");
+            jobject propertiesObj = env->GetObjectField(eventObj, propertiesFieldID);
+            jclass mapClass = env->GetObjectClass(propertiesObj);
+            jmethodID entrySetMethodID = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
+            jobject entrySetObj = env->CallObjectMethod(propertiesObj, entrySetMethodID);
+            jclass setClass = env->GetObjectClass(entrySetObj);
+            jmethodID iteratorMethodID = env->GetMethodID(setClass, "iterator", "()Ljava/util/Iterator;");
+            jobject iteratorObj = env->CallObjectMethod(entrySetObj, iteratorMethodID);
+            jclass iteratorClass = env->GetObjectClass(iteratorObj);
+            jmethodID hasNextMethodID = env->GetMethodID(iteratorClass, "hasNext", "()Z");
+            jmethodID nextMethodID = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
+
+            std::map<std::string, ordered_json>  propertiesMap=convertOrderedJsons(env,propertiesObj);
+
+            fs::p2p::Event cppService;
+            cppService.name = nameValue;
+            cppService.params = propertiesMap;
+            events.push_back(cppService);
+        }
+
         fs::p2p::Payload::Device device;
         device.sn = sn;
         device.product_id = productId;
+        device.methods = methods;
+        device.services = services;
+        device.events = events;
 
         getPayload.devices[key] = device;
-        // 释放本地引用
         env->ReleaseStringUTFChars(keyObj, key);
         env->DeleteLocalRef(keyObj);
         env->ReleaseStringUTFChars(snObj, sn);
@@ -482,7 +797,6 @@ fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
         env->DeleteLocalRef(entryClass);
     }
 
-    // 释放本地引用
     env->DeleteLocalRef(payloadClass);
     env->DeleteLocalRef(devicesObj);
     env->DeleteLocalRef(mapClass);
@@ -491,55 +805,6 @@ fs::p2p::Payload convertJavaToPayload(JNIEnv *env, jobject &payload) {
     env->DeleteLocalRef(iteratorObj);
     env->DeleteLocalRef(iteratorClass);
     return getPayload;
-}
-
-std::map<std::string, ordered_json> convertOrderedJsons(JNIEnv *env, jobject &maps) {
-    std::map<std::string, ordered_json> cppMap;
-    // 获取 Java Map 的类和方法信息
-    jclass mapClass = env->GetObjectClass(maps);
-    jmethodID entrySetMethod = env->GetMethodID(mapClass, "entrySet", "()Ljava/util/Set;");
-    jclass setClass = env->FindClass("java/util/Set");
-    jmethodID iteratorMethod = env->GetMethodID(setClass, "iterator", "()Ljava/util/Iterator;");
-    jclass iteratorClass = env->FindClass("java/util/Iterator");
-    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
-    jclass entryClass = env->FindClass("java/util/Map$Entry");
-    jmethodID getKeyMethod = env->GetMethodID(entryClass, "getKey", "()Ljava/lang/Object;");
-    jmethodID getValueMethod = env->GetMethodID(entryClass, "getValue", "()Ljava/lang/Object;");
-
-    // 获取 Map 的迭代器
-    jobject entrySet = env->CallObjectMethod(maps, entrySetMethod);
-    jobject iterator = env->CallObjectMethod(entrySet, iteratorMethod);
-
-    // 遍历 Map，并将数据转换为 C++ Map
-    while (env->CallBooleanMethod(iterator, env->GetMethodID(iteratorClass, "hasNext", "()Z"))) {
-        jobject entry = env->CallObjectMethod(iterator, nextMethod);
-        jstring key = static_cast<jstring>(env->CallObjectMethod(entry, getKeyMethod));
-        // 将 Java String 转换为 C++ std::string
-        std::string cppKey = jstringToString(env, key);
-        jstring value = static_cast<jstring>(env->CallObjectMethod(entry, getValueMethod));
-        if (!isStringNullOrEmpty(env, value)) {
-            std::string cppValue = jstringToString(env, value);
-            try {
-                // 创建 ordered_json 对象并存入 C++ Map
-                ordered_json jsonValue = ordered_json::parse(cppValue);
-                cppMap[cppKey] = jsonValue;
-            } catch (const std::exception &e) {
-                cppMap[cppKey] = cppValue;
-            }
-        } else {
-            cppMap[cppKey] = "";
-        }
-        // 释放局部引用
-        env->DeleteLocalRef(entry);
-        env->DeleteLocalRef(key);
-        env->DeleteLocalRef(value);
-    }
-
-    // 释放局部引用
-    env->DeleteLocalRef(iterator);
-    env->DeleteLocalRef(entrySet);
-
-    return cppMap;
 }
 
 fs::p2p::Service
@@ -658,64 +923,6 @@ processMethodList(JNIEnv *env, jobject &methodsList, std::list<fs::p2p::Method> 
     }
 }
 
-std::list<fs::p2p::Method> convertJavaToMethods(JNIEnv *env, jobject &methodsList) {
-    // Get List class and its iterator method
-    jclass listClass = env->GetObjectClass(methodsList);
-    jmethodID iteratorMethod = env->GetMethodID(listClass, "iterator", "()Ljava/util/Iterator;");
-
-    // Get Iterator class and its hasNext and next methods
-    jclass iteratorClass = env->FindClass("java/util/Iterator");
-    jmethodID hasNextMethod = env->GetMethodID(iteratorClass, "hasNext", "()Z");
-    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
-
-    // Get Method class and its fields
-    jclass methodClass = env->FindClass("com/library/natives/Method");
-    jfieldID nameField = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
-    jfieldID paramsField = env->GetFieldID(methodClass, "params", "Ljava/util/Map;");
-    jfieldID reasonCodeField = env->GetFieldID(methodClass, "reason_code", "I");
-    jfieldID reasonStringField = env->GetFieldID(methodClass, "reason_string",
-                                                 "Ljava/lang/String;");
-    // Create C++ std::list<Method>
-    std::list<fs::p2p::Method> methods;
-    // Call List's iterator method to get an iterator
-    jobject iterator = env->CallObjectMethod(methodsList, iteratorMethod);
-
-    // Loop through the list using the iterator
-    while (env->CallBooleanMethod(iterator, hasNextMethod)) {
-        // Call iterator's next method to get the next object in the list
-        jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
-
-        // Create C++ Method object
-        fs::p2p::Method method;
-
-        // Get values from Java Method object
-        jstring name = (jstring) env->GetObjectField(methodObj, nameField);
-        method.name = env->GetStringUTFChars(name, nullptr);
-
-        jint reasonCode = env->GetIntField(methodObj, reasonCodeField);
-        method.reason_code = static_cast<int>(reasonCode);
-
-        jstring reasonString = (jstring) env->GetObjectField(methodObj, reasonStringField);
-        method.reason_string = env->GetStringUTFChars(reasonString, nullptr);
-
-        // Get Map object from params field
-        jobject paramsObj = env->GetObjectField(methodObj, paramsField);
-
-        // Process Map entries
-        processParams(env, paramsObj, method.params);
-
-        // Add the Method object to the std::list
-        methods.push_back(method);
-
-        // Release local references
-        //env->ReleaseStringUTFChars(name, method.name.c_str());
-        //env->ReleaseStringUTFChars(reasonString, method.reason_string.c_str());
-    }
-
-    // Release local references
-    env->DeleteLocalRef(iterator);
-    return methods;
-}
 
 fs::p2p::Method convertJavaToMethod(JNIEnv *env, jobject methodObject) {
     fs::p2p::Method cppMethod;
@@ -775,67 +982,6 @@ fs::p2p::Service convertJavaToService(JNIEnv *env, jobject serviceObject) {
     return cppService;
 }
 
-std::list<fs::p2p::Service> convertJavaToServices(JNIEnv *env, jobject &servicesList) {
-    // Get List class and its iterator method
-    jclass listClass = env->GetObjectClass(servicesList);
-    jmethodID iteratorMethod = env->GetMethodID(listClass, "iterator", "()Ljava/util/Iterator;");
-
-    // Get Iterator class and its hasNext and next methods
-    jclass iteratorClass = env->FindClass("java/util/Iterator");
-    jmethodID hasNextMethod = env->GetMethodID(iteratorClass, "hasNext", "()Z");
-    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
-
-    // Get Method class and its fields
-    jclass methodClass = env->FindClass("com/library/natives/Service");
-    jfieldID nameField = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
-    jfieldID paramsField = env->GetFieldID(methodClass, "propertys", "Ljava/util/Map;");
-    jfieldID reasonCodeField = env->GetFieldID(methodClass, "reason_code", "I");
-    jfieldID reasonStringField = env->GetFieldID(methodClass, "reason_string",
-                                                 "Ljava/lang/String;");
-    // Create C++ std::list<Method>
-    std::list<fs::p2p::Service> servies;
-
-    // Call List's iterator method to get an iterator
-    jobject iterator = env->CallObjectMethod(servicesList, iteratorMethod);
-
-    // Loop through the list using the iterator
-    while (env->CallBooleanMethod(iterator, hasNextMethod)) {
-        // Call iterator's next method to get the next object in the list
-        jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
-
-        // Create C++ Method object
-        fs::p2p::Service service;
-
-        // Get values from Java Method object
-        jstring name = (jstring) env->GetObjectField(methodObj, nameField);
-        service.name = env->GetStringUTFChars(name, nullptr);
-
-        jint reasonCode = env->GetIntField(methodObj, reasonCodeField);
-        service.reason_code = static_cast<int>(reasonCode);
-
-        jstring reasonString = (jstring) env->GetObjectField(methodObj, reasonStringField);
-        service.reason_string = env->GetStringUTFChars(reasonString, nullptr);
-
-        // Get Map object from params field
-        jobject paramsObj = env->GetObjectField(methodObj, paramsField);
-
-        // Process Map entries
-        processParams(env, paramsObj, service.propertys);
-
-        // Add the Method object to the std::list
-        servies.push_back(service);
-
-//        // Release local references
-//        env->ReleaseStringUTFChars(name, method.name.c_str());
-//        env->ReleaseStringUTFChars(reasonString, method.reason_string.c_str());
-    }
-
-    // Use the 'methods' list as needed...
-
-    // Release local references
-    //env->DeleteLocalRef(iterator);
-    return servies;
-}
 
 fs::p2p::Event
 processEventList(JNIEnv *env, jobject &eventsList, std::list<fs::p2p::Event> events) {
@@ -936,57 +1082,6 @@ fs::p2p::Event convertJavaEvent(JNIEnv *env, jobject eventObject) {
     return cppEvent;
 }
 
-std::list<fs::p2p::Event> convertJavaToEvents(JNIEnv *env, jobject &eventsList) {
-    // Get List class and its iterator method
-    jclass listClass = env->GetObjectClass(eventsList);
-    jmethodID iteratorMethod = env->GetMethodID(listClass, "iterator", "()Ljava/util/Iterator;");
-
-    // Get Iterator class and its hasNext and next methods
-    jclass iteratorClass = env->FindClass("java/util/Iterator");
-    jmethodID hasNextMethod = env->GetMethodID(iteratorClass, "hasNext", "()Z");
-    jmethodID nextMethod = env->GetMethodID(iteratorClass, "next", "()Ljava/lang/Object;");
-
-    // Get Method class and its fields
-    jclass methodClass = env->FindClass("com/library/natives/Event");
-    jfieldID nameField = env->GetFieldID(methodClass, "name", "Ljava/lang/String;");
-    jfieldID paramsField = env->GetFieldID(methodClass, "params", "Ljava/util/Map;");
-
-    // Create C++ std::list<Method>
-    std::list<fs::p2p::Event> events;
-
-    // Call List's iterator method to get an iterator
-    jobject iterator = env->CallObjectMethod(eventsList, iteratorMethod);
-
-    // Loop through the list using the iterator
-    while (env->CallBooleanMethod(iterator, hasNextMethod)) {
-        // Call iterator's next method to get the next object in the list
-        jobject methodObj = env->CallObjectMethod(iterator, nextMethod);
-
-        // Create C++ Method object
-        fs::p2p::Event event;
-
-        // Get values from Java Method object
-        jstring name = (jstring) env->GetObjectField(methodObj, nameField);
-        event.name = env->GetStringUTFChars(name, nullptr);
-
-
-        // Get Map object from params field
-        jobject paramsObj = env->GetObjectField(methodObj, paramsField);
-
-        // Process Map entries
-        processParams(env, paramsObj, event.params);
-
-        // Add the Method object to the std::list
-        events.push_back(event);
-
-//        // Release local references
-//        env->ReleaseStringUTFChars(name, event.name.c_str());
-    }
-
-    // Release local references
-//    env->DeleteLocalRef(iterator);
-    return events;
-}
 
 fs::p2p::Request getRequest(JNIEnv *env, jobject &request) {
     // 获取ConnParams类引用

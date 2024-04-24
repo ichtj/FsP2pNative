@@ -46,7 +46,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
 
 JNIEXPORT void JNICALL
 Java_com_library_natives_FsPipelineJNI_logEnable(JNIEnv *env, jclass clz,
-                                                jboolean isEnable) {
+                                                 jboolean isEnable) {
     setLoggingEnabled(isEnable);
 }
 
@@ -301,7 +301,7 @@ Java_com_library_natives_FsPipelineJNI_close(JNIEnv *env, jclass clz) {
     if (s_mp != NULL) {
         s_mp->close();
     }
-    for (jobject cb : callbacks) {
+    for (jobject cb: callbacks) {
         (*env).DeleteGlobalRef(cb);
     }
     callbacks.clear();
@@ -507,27 +507,24 @@ Java_com_library_natives_FsPipelineJNI_replyMethod(JNIEnv *env, jclass clz, jobj
 }
 
 JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_replyServices(JNIEnv *env, jclass clz, jobject request,
-                                                     jobject servicesList) {
+Java_com_library_natives_FsPipelineJNI_replyService(JNIEnv *env, jclass clz, jobject request,
+                                                    jobject params) {
     fs::p2p::Request convertRequest = getRequest(env, request);
-    // 获取 Map 类型的 Class 对象
-    convertRequest.payload.devices.begin()->second.services.clear();
-    convertRequest.payload.devices.begin()->second.services = convertJavaToServices(env,
-                                                                                    servicesList);
-    return s_mp != NULL ? s_mp->response(convertRequest, convertRequest.payload.devices) : -1;
+    if (!convertRequest.payload.devices.empty()) {
+        auto it = convertRequest.payload.devices.begin();
+        fs::p2p::Payload::Device &firstDevice = it->second;
+        std::string sn = firstDevice.sn;
+        auto &services = firstDevice.services.front();
+        std::map<std::string, ordered_json> newPropertys= convertOrderedJsons(env, params);
+        services.propertys =newPropertys;
+        int result=s_mp != NULL ? s_mp->response(convertRequest, convertRequest.payload.devices) : -1;
+        env->DeleteLocalRef(request);
+        env->DeleteLocalRef(params);
+        return result;
+    }
+    return -1;
 }
 
-JNIEXPORT jint JNICALL
-Java_com_library_natives_FsPipelineJNI_replyService(JNIEnv *env, jclass clz, jobject request,
-                                                    jobject out) {
-    fs::p2p::Request convertRequest = getRequest(env, request);
-    // 获取 Map 类型的 Class 对象
-    convertRequest.payload.devices.begin()->second.services.clear();
-    convertRequest.payload.devices.begin()->second.services.push_back(
-            convertJavaToService(env, out));
-    return s_mp != NULL ? s_mp->response(convertRequest, convertRequest.payload.devices) : -1;
-}
-//fs::p2p::InfomationManifest dev = { "FSM-1DBD81" };
 JNIEXPORT jint JNICALL
 Java_com_library_natives_FsPipelineJNI_pushEvents(JNIEnv *env, jclass clz, jobject eventsList) {
     std::map<std::string, fs::p2p::Payload::Device> list;

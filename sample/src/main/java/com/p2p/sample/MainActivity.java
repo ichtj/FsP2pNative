@@ -12,7 +12,10 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.library.natives.Action;
 import com.library.natives.ConnParams;
+import com.library.natives.Device;
+import com.library.natives.Payload;
 import com.library.natives.SubDev;
 import com.library.natives.Event;
 import com.library.natives.FsPipelineJNI;
@@ -27,6 +30,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -49,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         btnPrintLog = findViewById(R.id.btnPrintLog);
-        btnPrintLog.setText(FsPipelineJNI.isLogEnable()?"日志:开":"日志:关");
+        btnPrintLog.setText(FsPipelineJNI.isLogEnable() ? "日志:开" : "日志:关");
         tvResult = findViewById(R.id.tvResult);
         etClientId = findViewById(R.id.etClientId);
         etClientId.setText(Fsp2pTools.registerClientId());
@@ -100,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    int count = 0;
     PipelineCallback pipelineCallback1 = new PipelineCallback() {
         @Override
         public void connectStatus(boolean status) {
@@ -122,15 +127,37 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void callback(Request request) {
-            Log.d(TAG, "callback1: threadName>>"+Thread.currentThread().getName());
-            Map<String, String> params = new HashMap<>();
-            params.put("params1", "1");
-            params.put("params2", "");
-            params.put("params3", null);
-            params.put("params4", "{\"name\":\"ichtj\",\"age\":18,\"sex\":\"男\"}");
-            params.put("params5", "[ \"dfgsdg\" ] The path entered does not exist！");
-            int result = FsPipelineJNI.replyMethod(request, params);
-            Log.d(TAG, "callback1: result>>" + result);
+            Map<String, String> out = new HashMap<>();
+            switch (request.action) {
+                case Action_Read:
+                    Payload payload = request.payload;
+                    Map<String, Device> devices = payload.devices;
+                    Set<String> set = devices.keySet();
+                    for (String key : set) {
+                        Device device = devices.get(key);
+                        List<Service> services = device.services;
+                        for (Service s : services) {
+                            Map<String, String> in = s.propertys;
+                            Set<String> inSet = in.keySet();
+                            for (String k : inSet) {
+                                Log.d(TAG, "callback1: key>>" + key + ",device>>" + device.toString());
+                                out.put(k, "k" + count++);
+                                FsPipelineJNI.replyService(request, out);
+                            }
+                        }
+
+                    }
+                    break;
+                case Action_Method:
+                    out.put("params1", "1");
+                    out.put("params2", "");
+                    out.put("params3", null);
+                    out.put("params4", "{\"name\":\"ichtj\",\"age\":18,\"sex\":\"男\"}");
+                    out.put("params5", "[ \"dfgsdg\" ] The path entered does not exist！");
+                    int result = FsPipelineJNI.replyMethod(request, out);
+                    Log.d(TAG, "callback1: result>>" + result);
+                    break;
+            }
             handler.sendMessage(handler.obtainMessage(0x00, "request1: request>>" + request));
         }
     };
@@ -157,12 +184,12 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void callback(Request request) {
-            try{
+            try {
                 Thread.sleep(5000);
-            }catch(Throwable throwable){
+            } catch (Throwable throwable) {
                 throwable.printStackTrace();
             }
-            Log.d(TAG, "callback2: threadName>>"+Thread.currentThread().getName());
+            Log.d(TAG, "callback2: threadName>>" + Thread.currentThread().getName());
             Map<String, String> params = new HashMap<>();
             params.put("params1", "1");
             params.put("params2", "2");

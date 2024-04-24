@@ -86,21 +86,28 @@ public class FsPipelineJNI {
      */
     public static native int replyMethod(Request request, Map<String, String> out);
 
-    /**
-     * 回应服务-属性
-     *
-     * @param out 输出参数
-     * @return 是否成功
-     */
-    public static native int replyServices(Request request, List<Service> out);
+//    /**
+//     * 回应服务-属性
+//     *
+//     * @param out 输出参数
+//     * @return 是否成功
+//     */
+//    public static native int replyServices(Request request, List<Service> out);
 
+//    /**
+//     * 回应服务
+//     *
+//     * @param out 输出参数
+//     * @return 是否成功
+//     */
+//    public static native int replyService(Request request, Service out);
     /**
      * 回应服务
      *
      * @param out 输出参数
      * @return 是否成功
      */
-    public static native int replyService(Request request, Service out);
+    public static native int replyService(Request request, Map<String, String> out);
     /**--------------------------------------------回复其他设备 end--------------------------------------------------*/
 
 
