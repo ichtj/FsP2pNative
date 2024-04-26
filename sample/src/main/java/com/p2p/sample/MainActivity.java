@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void callback(Request request) {
-            Map<String, String> out = new HashMap<>();
+            Map<String, Object> out = new HashMap<>();
             switch (request.action) {
                 case Action_Read:
                     Payload payload = request.payload;
@@ -137,11 +137,11 @@ public class MainActivity extends AppCompatActivity {
                         Device device = devices.get(key);
                         List<Service> services = device.services;
                         for (Service s : services) {
-                            Map<String, String> in = s.propertys;
+                            Map<String, Object> in = s.propertys;
                             Set<String> inSet = in.keySet();
                             for (String k : inSet) {
                                 Log.d(TAG, "callback1: key>>" + key + ",device>>" + device.toString());
-                                out.put(k, "k" + count++);
+                                out.put(k, (count++)+"");
                                 FsPipelineJNI.replyService(request, out);
                             }
                         }
@@ -149,11 +149,14 @@ public class MainActivity extends AppCompatActivity {
                     }
                     break;
                 case Action_Method:
+                    out.put("params0", false);
                     out.put("params1", "1");
-                    out.put("params2", "");
+                    out.put("params2", "?");
                     out.put("params3", null);
                     out.put("params4", "{\"name\":\"ichtj\",\"age\":18,\"sex\":\"男\"}");
                     out.put("params5", "[ \"dfgsdg\" ] The path entered does not exist！");
+                    out.put("params6", 2);
+                    out.put("params6", 1.02);
                     int result = FsPipelineJNI.replyMethod(request, out);
                     Log.d(TAG, "callback1: result>>" + result);
                     break;
@@ -190,7 +193,7 @@ public class MainActivity extends AppCompatActivity {
                 throwable.printStackTrace();
             }
             Log.d(TAG, "callback2: threadName>>" + Thread.currentThread().getName());
-            Map<String, String> params = new HashMap<>();
+            Map<String, Object> params = new HashMap<>();
             params.put("params1", "1");
             params.put("params2", "2");
             int result = FsPipelineJNI.replyMethod(request, params);
@@ -267,7 +270,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void postReadClick(View view) {
-        Map<String, String> out = new HashMap<>();
+        Map<String, Object> out = new HashMap<>();
         out.put("iotcloud_version", "1.00.1");
         Service service = new Service("device", out, 0, "");
         FsPipelineJNI.pushRead(Fsp2pTools.getTargetSn(), service);
@@ -275,7 +278,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void postReadListClick(View view) {
         List<Service> serviceList = new ArrayList<>();
-        Map<String, String> out = new HashMap<>();
+        Map<String, Object> out = new HashMap<>();
         out.put("nettype", "unknown");
         Service service1 = new Service("network", out, 0, "");
         serviceList.add(service1);
@@ -287,7 +290,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void postWriteClick(View view) {
-        Map<String, String> out = new HashMap<>();
+        Map<String, Object> out = new HashMap<>();
         out.put("dbm", "-1");
         Service service = new Service("network", out, 0, "");
         FsPipelineJNI.pushWrite(Fsp2pTools.getTargetSn(), service);
@@ -295,11 +298,11 @@ public class MainActivity extends AppCompatActivity {
 
     public void postWriteListClick(View view) {
         List<Service> serviceList = new ArrayList<>();
-        Map<String, String> out1 = new HashMap<>();
+        Map<String, Object> out1 = new HashMap<>();
         out1.put("topapp", "com.test.ichtj");
         Service service1 = new Service("device", out1, 0, "");
         serviceList.add(service1);
-        Map<String, String> out2 = new HashMap<>();
+        Map<String, Object> out2 = new HashMap<>();
         out2.put("lteoperator", "zgyd");
         Service service2 = new Service("network", out2, 0, "");
         serviceList.add(service2);
@@ -307,7 +310,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void postNotifyClick(View view) {
-        Map<String, String> out = new HashMap<>();
+        Map<String, Object> out = new HashMap<>();
         out.put("backlight", "248");
         Service service = new Service("device", out, 0, "");
         FsPipelineJNI.pushNotify(service);
@@ -315,7 +318,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void postNotifyListClick(View view) {
         List<Service> serviceList = new ArrayList<>();
-        Map<String, String> out1 = new HashMap<>();
+        Map<String, Object> out1 = new HashMap<>();
         out1.put("iccid", "123456");
         out1.put("lteoperator", "中国移动");
         Service service1 = new Service("network", out1, 0, "");
@@ -324,7 +327,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void postMethodClick(View view) {
-        Map<String, String> out1 = new HashMap<>();
+        Map<String, Object> out1 = new HashMap<>();
         out1.put("srcPath", "/sdcard/DCIM/test.log");
         out1.put("desPath", "/sdcard/");
         Method out = new Method("file_move", out1, 0, "");
@@ -333,10 +336,10 @@ public class MainActivity extends AppCompatActivity {
 
     public void postMethodsClick(View view) {
         List<Method> methodList = new ArrayList<>();
-        Map<String, String> out1 = new HashMap<>();
+        Map<String, Object> out1 = new HashMap<>();
         out1.put("filePath", "/sdcard/DCIM/");
         Method method1 = new Method("file_del", out1, 0, "");
-        Map<String, String> out2 = new HashMap<>();
+        Map<String, Object> out2 = new HashMap<>();
         out2.put("url", "www.baidu.com");
         out2.put("name", "update");
         out2.put("extension", "zip");

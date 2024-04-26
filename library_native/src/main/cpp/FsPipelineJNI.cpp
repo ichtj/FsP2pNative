@@ -487,7 +487,7 @@ Java_com_library_natives_FsPipelineJNI_replyMethod(JNIEnv *env, jclass clz, jobj
         fs::p2p::Payload::Device res_device;
         res_device.sn = item.second.sn;
         res_device.product_id = item.second.product_id;
-        const fs::p2p::Method &firstMethod = res_device.methods.front();
+        const fs::p2p::Method &firstMethod = item.second.methods.front();
         fs::p2p::Method customizeMaps;
         customizeMaps.name = firstMethod.name;
         customizeMaps.params = convertOrderedJsons(env, params);

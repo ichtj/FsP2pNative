@@ -84,7 +84,7 @@ public class FsPipelineJNI {
      * @param out 输出参数
      * @return 是否成功
      */
-    public static native int replyMethod(Request request, Map<String, String> out);
+    public static native int replyMethod(Request request, Map<String, Object> out);
 
 //    /**
 //     * 回应服务-属性
@@ -107,7 +107,7 @@ public class FsPipelineJNI {
      * @param out 输出参数
      * @return 是否成功
      */
-    public static native int replyService(Request request, Map<String, String> out);
+    public static native int replyService(Request request, Map<String, Object> out);
     /**--------------------------------------------回复其他设备 end--------------------------------------------------*/
 
 
