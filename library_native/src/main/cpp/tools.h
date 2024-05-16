@@ -64,7 +64,8 @@ static jobject get_json_value(JNIEnv *env, const ordered_json &v) {
         } else if (v.type() == json::value_t::string) {
             const std::string &str = v;
             return env->NewStringUTF(str.c_str());
-        } else if (v.type() == json::value_t::number_integer) {
+        } else if (v.type() == json::value_t::number_integer
+                || v.type() == json::value_t::number_unsigned) {
             jint javaInt = static_cast<jint>(v);
             return env->NewObject(env->FindClass("java/lang/Integer"),
                                   env->GetMethodID(env->FindClass("java/lang/Integer"), "<init>",

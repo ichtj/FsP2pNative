@@ -1,14 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    signingConfigs {
-        debug {
-            storeFile file('../other/facefuture.jks')
-            storePassword 'android'
-            keyAlias 'rockchip'
-            keyPassword 'android'
-        }
-    }
+//    signingConfigs {
+//        debug {
+//            storeFile file('../other/facefuture.jks')
+//            storePassword 'android'
+//            keyAlias 'rockchip'
+//            keyPassword 'android'
+//        }
+//    }
     compileSdkVersion rootProject.ext.android.compileSdkVersion
 
     defaultConfig {
@@ -25,7 +25,7 @@ android {
         }
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        signingConfig signingConfigs.debug
+//        signingConfig signingConfigs.debug
     }
 
     buildTypes {
