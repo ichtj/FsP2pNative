@@ -132,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void receive(Request request) {
+        public void request(Request request) {
             Map<String, Object> out = new HashMap<>();
             switch (request.action) {
                 case Action_Read:
@@ -171,8 +171,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void pushCallback(Response response) {
-            handler.sendMessage(handler.obtainMessage(0x00, "pushCallback1: request>>" + response));
+        public void response(Response response) {
+            handler.sendMessage(handler.obtainMessage(0x00, "response1: response>>" + response));
         }
     };
 
@@ -197,13 +197,13 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void pushCallback(Response response) {
-            Log.d(TAG, "pushCallback2: "+response);
-            handler.sendMessage(handler.obtainMessage(0x00, "pushCallback2: request>>" + response));
+        public void response(Response response) {
+            Log.d(TAG, "response2: "+response);
+            handler.sendMessage(handler.obtainMessage(0x00, "response2: response>>" + response));
         }
 
         @Override
-        public void receive(Request request) {
+        public void request(Request request) {
             try {
                 Thread.sleep(5000);
             } catch (Throwable throwable) {

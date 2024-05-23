@@ -38,9 +38,9 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
     deviceClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_DEVICE));
     gMethodConnectStatus = (*env).GetMethodID(callbackClass, "connectStatus", "(Z)V");
     gMethodPrintLog = (*env).GetMethodID(callbackClass, "pipelineLog", "(ILjava/lang/String;)V");
-    gReceiveCallback = (*env).GetMethodID(callbackClass, "receive",
+    gReceiveCallback = (*env).GetMethodID(callbackClass, "request",
                                           "(Lcom/library/natives/Request;)V");
-    gPushCallback = (*env).GetMethodID(callbackClass, "pushCallback",
+    gPushCallback = (*env).GetMethodID(callbackClass, "response",
                                        "(Lcom/library/natives/Response;)V");
     gMErrCallback = (*env).GetMethodID(callbackClass, "errCallback",
                                        "(ILjava/lang/String;)V");
