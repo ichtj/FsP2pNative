@@ -48,30 +48,36 @@ public:
     std::shared_ptr<IPacketizer> packerizer() const;
     std::shared_ptr<ITransmitter> transmitter() const;
 
+    void setRequestTimeout(int ms);
+
     /**
      * 调用方法
      * @param list 请求的设备列表
      * @param cb 响应的回调函数
      * @param topic 目标设备的订阅主题
-     * @return 非0失败
+     * @return 返回请求的iid，为空则失败
      */
-    int postMethod(const std::map<std::string, Payload::Device> &list,
-                   ResponseCallback cb, void *opaque,
-                   const std::string &topic);
-    int postRead(const std::map<std::string, Payload::Device> &list,
-                 ResponseCallback cb, void *opaque,
-                 const std::string &topic);
-    int postWrite(const std::map<std::string, Payload::Device> &list,
-                  ResponseCallback cb, void *opaque,
-                  const std::string &topic);
+    std::string postMethod(const std::map<std::string, Payload::Device> &list,
+                           ResponseCallback cb, void *opaque,
+                           const std::string &topic);
+    std::string postRead(const std::map<std::string, Payload::Device> &list,
+                         ResponseCallback cb, void *opaque,
+                         const std::string &topic);
+    std::string postWrite(const std::map<std::string, Payload::Device> &list,
+                          ResponseCallback cb, void *opaque,
+                          const std::string &topic);
 
-    int postNotify(const std::map<std::string, Payload::Device> &list);
-    int postEvent(const std::map<std::string, Payload::Device> &list);
-    int postBroadcast(const std::map<std::string, Payload::Device> &list);
-    int postRequest(Request::Action action,
-                    const std::map<std::string, Payload::Device> &list,
-                    ResponseCallback cb, void *opaque,
-                    const std::string &topic = std::string());
+    std::string postEvent(const std::map<std::string, Payload::Device> &list,
+                          ResponseCallback cb = NULL, void *opaque = NULL);
+
+    std::string postNotify(const std::map<std::string, Payload::Device> &list);
+    std::string postBroadcast(const std::map<std::string, Payload::Device> &list);
+    std::string postRequest(Request::Action action,
+                            const std::map<std::string, Payload::Device> &list,
+                            ResponseCallback cb = NULL, void *opaque = NULL,
+                            const std::string &topic = std::string());
+
+    void removeResponseCallback(const std::string &iid);
 
     /**
      * 订阅设备消息，用于接收notify/event等
@@ -85,15 +91,15 @@ public:
     /**
      * 设备上线消息
      */
-    int postStartup();
+    std::string postStartup();
     /**
      * 设备离线消息
      */
-    int postShutdown();
+    std::string postShutdown();
     /**
      * 设备心跳消息，需定时触发
      */
-    int postHeartbeat();
+    std::string postHeartbeat();
 
     /**
      * @brief 回应请求

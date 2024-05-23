@@ -74,6 +74,10 @@ struct Event
 {
     std::string name;
     std::map<std::string, ordered_json> params;
+
+    // response
+    int reason_code = 0;
+    std::string reason_string;
 };
 
 struct Payload {
@@ -137,6 +141,10 @@ struct Request
      * UTC时间戳
      */
     std::string time;
+    /**
+     * 请求超时
+     */
+    int timeout = 0;
 
     Payload payload;
 };
@@ -148,6 +156,7 @@ struct Response
         Action_Method,
         Action_Read,
         Action_Write,
+        Action_Event,
     };
 
     /**

@@ -39,6 +39,15 @@
             android:onClick="connectClick"
             android:singleLine="true"
             android:text="连接" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="getConnectStateClick"
+            android:singleLine="true"
+            android:text="连接状态" />
 
         <Button
             android:layout_width="wrap_content"

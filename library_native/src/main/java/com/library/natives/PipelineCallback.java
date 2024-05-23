@@ -36,6 +36,11 @@ public interface PipelineCallback {
      * ---------------------.postEvent(Request source, List<Event> events);//回应事件
      * ---------------------.postNotify(Request source, List<Service> events);//回应通知
      */
-    void callback(Request request);
+    void receive(Request request);
 
+    /**
+     * 推送
+     * @param response
+     */
+    void pushCallback(Response response);
 }

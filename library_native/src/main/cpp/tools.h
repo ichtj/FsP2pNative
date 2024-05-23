@@ -25,6 +25,7 @@ struct ConnParams {
 
 #define  CLASS_ACTION "com/library/natives/Action"
 #define  CLASS_REQUEST "com/library/natives/Request"
+#define  CLASS_RESPONSE "com/library/natives/Response"
 #define  CLASS_METHOD "com/library/natives/Method"
 #define  CLASS_EVENT "com/library/natives/Event"
 #define  CLASS_SERVICE "com/library/natives/Service"
@@ -35,6 +36,7 @@ struct ConnParams {
 static JavaVM *gJavaVM;
 static jclass callbackClass;
 static jclass requestClass;
+static jclass responseClass;
 static jclass actionCls;
 static jclass methodClass;
 static jclass eventClass;
@@ -43,8 +45,10 @@ static jclass serviceClass;
 static jclass deviceClass;
 static jmethodID gMethodConnectStatus;
 static jmethodID gMethodPrintLog;
-static jmethodID gMCallback;
+static jmethodID gReceiveCallback;
+static jmethodID gPushCallback;
 static jmethodID gMErrCallback;
+static jboolean connected;
 static ConnParams globalConnParams;
 static std::vector<jobject> callbacks;
 static std::vector<fs::p2p::InfomationManifest> subDevList;
@@ -422,6 +426,86 @@ jobject convertRequestToJava(JNIEnv *env, const fs::p2p::Request &request) {
                                          javaPayload);
     return (*env).NewGlobalRef(javaRequest);
 }
+
+
+jobject convertResponseToJava(JNIEnv *env, const fs::p2p::Response &response) {
+    jmethodID reqConstructor = env->GetMethodID(responseClass, "<init>",
+                                                "(Ljava/lang/String;Lcom/library/natives/Action;Ljava/lang/String;Lcom/library/natives/Payload;)V");
+
+    jmethodID payloadConstructor = env->GetMethodID(payloadClass, "<init>", "()V");
+    jobject javaPayload = env->NewObject(payloadClass, payloadConstructor);
+    // 获取 Payload 对象的字段 ID
+    jfieldID devicesField = env->GetFieldID(payloadClass, "devices", "Ljava/util/Map;");
+
+    // 获取 Map 类的引用和构造函数
+    jclass mapClass = env->FindClass("java/util/HashMap");
+    jmethodID mapConstructor = env->GetMethodID(mapClass, "<init>", "()V");
+    jobject javaDevicesMap = env->NewObject(mapClass, mapConstructor);
+    if(!response.payload.devices.empty()){
+        for (const auto &entry: response.payload.devices) {
+            // 创建 Device 对象
+
+            jmethodID deviceConstructor = env->GetMethodID(deviceClass, "<init>",
+                                                           "(Ljava/lang/String;Ljava/lang/String;Ljava/util/List;Ljava/util/List;Ljava/util/List;)V");
+
+            // 获取 List 类的引用
+            jclass listClass = env->FindClass("java/util/ArrayList");
+            jobject javaDevice = env->NewObject(deviceClass, deviceConstructor,
+                                                env->NewStringUTF(entry.second.sn.c_str()),
+                                                env->NewStringUTF(entry.second.product_id.c_str()),
+                                                convertToJavaServices(env, entry.second.services),
+                                                convertToJavaMethods(env, entry.second.methods),
+                                                convertToJavaEvents(env, entry.second.events));
+
+            // 将 Device 对象放入 Map 中
+            env->CallObjectMethod(javaDevicesMap, env->GetMethodID(mapClass, "put",
+                                                                   "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"),
+                                  env->NewStringUTF(entry.first.c_str()), javaDevice);
+        }
+    }
+    //设置 Payload 对象的 devices 字段
+    env->SetObjectField(javaPayload, devicesField, javaDevicesMap);
+
+    const char *iidStr = response.iid.c_str();
+//    int actionStr = request.action;
+    const char *timeStr = response.time.c_str();
+    jfieldID actionFieldID = NULL;
+    jobject actionEnum = NULL;
+    if (response.action == fs::p2p::Request::Action::Action_Method) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Method",
+                                              "Lcom/library/natives/Action;");
+    } else if (response.action == fs::p2p::Request::Action::Action_Read) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Read",
+                                              "Lcom/library/natives/Action;");
+    } else if (response.action == fs::p2p::Request::Action::Action_Write) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Write",
+                                              "Lcom/library/natives/Action;");
+    } else if (response.action == fs::p2p::Request::Action::Action_Notify) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Notify",
+                                              "Lcom/library/natives/Action;");
+    } else if (response.action == fs::p2p::Request::Action::Action_Event) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Event",
+                                              "Lcom/library/natives/Action;");
+    } else if (response.action == fs::p2p::Request::Action::Action_Broadcast) {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Broadcast",
+                                              "Lcom/library/natives/Action;");
+    } else {
+        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Unknown",
+                                              "Lcom/library/natives/Action;");
+    }
+    if (actionFieldID != NULL) {
+        actionEnum = env->GetStaticObjectField(actionCls, actionFieldID);
+    }
+
+    jobject javaRequest = env->NewObject(responseClass,
+                                         reqConstructor,
+                                         env->NewStringUTF(iidStr),
+                                         actionEnum,
+                                         env->NewStringUTF(timeStr),
+                                         javaPayload);
+    return (*env).NewGlobalRef(javaRequest);
+}
+
 
 void processParams(JNIEnv *env, jobject paramsObj, std::map<std::string, ordered_json> &params) {
     // 获取 Map 类型的 Class 对象

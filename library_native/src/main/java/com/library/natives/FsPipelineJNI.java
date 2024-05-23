@@ -22,6 +22,12 @@ public class FsPipelineJNI {
     public static native boolean isLogEnable();
 
     /**
+     * 获取连接状态
+     * @return true | false
+     */
+    public static native boolean getConnectState();
+
+    /**
      * 初始化fs_p2p管道
      *
      * @param connParams 初始化参数

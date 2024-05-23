@@ -20,6 +20,7 @@ import com.library.natives.Action;
 import com.library.natives.ConnParams;
 import com.library.natives.Device;
 import com.library.natives.Payload;
+import com.library.natives.Response;
 import com.library.natives.SubDev;
 import com.library.natives.Event;
 import com.library.natives.FsPipelineJNI;
@@ -131,7 +132,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void callback(Request request) {
+        public void receive(Request request) {
             Map<String, Object> out = new HashMap<>();
             switch (request.action) {
                 case Action_Read:
@@ -145,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
                             Map<String, Object> in = s.propertys;
                             Set<String> inSet = in.keySet();
                             for (String k : inSet) {
-                                Log.d(TAG, "callback1: key>>" + key + ",device>>" + device.toString());
+                                Log.d(TAG, "receive1: key>>" + key + ",device>>" + device.toString());
                                 out.put(k, (count++) + "");
                                 FsPipelineJNI.replyService(request, out);
                             }
@@ -163,10 +164,15 @@ public class MainActivity extends AppCompatActivity {
                     out.put("params6", 2);
                     out.put("params6", 1.02);
                     int result = FsPipelineJNI.replyMethod(request, out);
-                    Log.d(TAG, "callback1: result>>" + result);
+                    Log.d(TAG, "receive1: result>>" + result);
                     break;
             }
-            handler.sendMessage(handler.obtainMessage(0x00, "request1: request>>" + request));
+            handler.sendMessage(handler.obtainMessage(0x00, "receive1: request>>" + request));
+        }
+
+        @Override
+        public void pushCallback(Response response) {
+            handler.sendMessage(handler.obtainMessage(0x00, "pushCallback1: request>>" + response));
         }
     };
 
@@ -191,18 +197,24 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void callback(Request request) {
+        public void pushCallback(Response response) {
+            Log.d(TAG, "pushCallback2: "+response);
+            handler.sendMessage(handler.obtainMessage(0x00, "pushCallback2: request>>" + response));
+        }
+
+        @Override
+        public void receive(Request request) {
             try {
                 Thread.sleep(5000);
             } catch (Throwable throwable) {
                 throwable.printStackTrace();
             }
-            Log.d(TAG, "callback2: threadName>>" + Thread.currentThread().getName());
+            Log.d(TAG, "receive2: threadName>>" + Thread.currentThread().getName());
             Map<String, Object> params = new HashMap<>();
             params.put("params1", "1");
             params.put("params2", "2");
             int result = FsPipelineJNI.replyMethod(request, params);
-            Log.d(TAG, "callback2: result>>" + result);
+            Log.d(TAG, "receive2: result>>" + result);
             handler.sendMessage(handler.obtainMessage(0x00, "request2: request>>" + request));
         }
     };
@@ -225,6 +237,11 @@ public class MainActivity extends AppCompatActivity {
 
     public void connectClick(View view) {
         FsPipelineJNI.connect();
+    }
+
+    public void getConnectStateClick(View view) {
+        boolean connState=FsPipelineJNI.getConnectState();
+        handler.sendMessage(handler.obtainMessage(0x00, "getConnectState："+connState));
     }
 
     public void disConnectClick(View view) {
@@ -254,7 +271,8 @@ public class MainActivity extends AppCompatActivity {
         out.put("fileName", "update.zip");
         out.put("percent", "1%");
         Event event = new Event("file_download_percent", out);
-        FsPipelineJNI.pushEvent(event);
+        int result=FsPipelineJNI.pushEvent(event);
+        Log.d(TAG, "postEventClick: result>>"+result);
     }
 
     public void postEventsClick(View view) {
