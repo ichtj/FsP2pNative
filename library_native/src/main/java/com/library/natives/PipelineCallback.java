@@ -1,7 +1,5 @@
 package com.library.natives;
 
-import java.util.List;
-
 /**
  * fsp2p管道回调
  */
@@ -27,7 +25,7 @@ public interface PipelineCallback {
     void pipelineLog(int level,String content);
 
     /**
-     * 消息管道中的回调
+     * 请求
      * @param request 回调的对象
      * 按需调用以下的方法 去回应调用者[有些方法不需要反馈]
      * -------PublishMessage.postAll(Request source, Map<String,Device> list);//回应总消息体
@@ -39,7 +37,7 @@ public interface PipelineCallback {
     void request(Request request);
 
     /**
-     * 推送
+     * 回应
      * @param response
      */
     void response(Response response);

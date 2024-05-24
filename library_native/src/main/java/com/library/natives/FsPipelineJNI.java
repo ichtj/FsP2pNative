@@ -124,7 +124,7 @@ public class FsPipelineJNI {
      * @param out 输出参数
      * @return 是否成功
      */
-    public static native int pushMethods(String sn, List<Method> out);
+    public static native String pushMethods(String sn, List<Method> out);
 
     /**
      * 发布方法
@@ -132,7 +132,7 @@ public class FsPipelineJNI {
      * @param out 输出参数
      * @return 是否成功
      */
-    public static native int pushMethod(String sn, Method out);
+    public static native String pushMethod(String sn, Method out);
 
     /**
      * 发布事件
@@ -140,7 +140,7 @@ public class FsPipelineJNI {
      * @param out 输出参数
      * @return 是否成功
      */
-    public static native int pushEvents(List<Event> out);
+    public static native String pushEvents(List<Event> out);
 
     /**
      * 发布事件
@@ -148,37 +148,37 @@ public class FsPipelineJNI {
      * @param out 输出参数
      * @return 是否成功
      */
-    public static native int pushEvent(Event out);
+    public static native String pushEvent(Event out);
 
     /**
      * 主动通知
      */
-    public static native int pushNotify(Service out);
+    public static native String pushNotify(Service out);
 
     /**
      * 主动通知
      */
-    public static native int pushNotifyList(List<Service> out);
+    public static native String pushNotifyList(List<Service> out);
 
     /**
      * 主动请求读
      */
-    public static native int pushReadList(String sn, List<Service> out);
+    public static native String pushReadList(String sn, List<Service> out);
 
     /**
      * 主动请求读
      */
-    public static native int pushRead(String sn, Service out);
+    public static native String pushRead(String sn, Service out);
 
     /**
      * 主动请求写
      */
-    public static native int pushWriteList(String sn, List<Service> out);
+    public static native String pushWriteList(String sn, List<Service> out);
 
     /**
      * 主动请求写
      */
-    public static native int pushWrite(String sn, Service out);
+    public static native String pushWrite(String sn, Service out);
     /**-------------------------------------------向设备读写,事件 end------------------------------------------------*/
 
 

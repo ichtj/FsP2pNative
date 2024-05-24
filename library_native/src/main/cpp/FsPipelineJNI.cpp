@@ -542,7 +542,7 @@ Java_com_library_natives_FsPipelineJNI_replyService(JNIEnv *env, jclass clz, job
     return -1;
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushEvents(JNIEnv *env, jclass clz, jobject eventsList) {
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
@@ -569,10 +569,10 @@ Java_com_library_natives_FsPipelineJNI_pushEvents(JNIEnv *env, jclass clz, jobje
             gJavaVM->DetachCurrentThread();
         });
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushMethods(JNIEnv *env, jclass clz, jstring sn,
                                                    jobject out) {
     std::string snStr = jstringToString(env, sn);
@@ -602,10 +602,10 @@ Java_com_library_natives_FsPipelineJNI_pushMethods(JNIEnv *env, jclass clz, jstr
             gJavaVM->DetachCurrentThread();
         }, NULL, dev.getSubscribeTopic());
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushMethod(JNIEnv *env, jclass clz, jstring sn,
                                                   jobject out) {
     std::string snStr = jstringToString(env, sn);
@@ -636,10 +636,10 @@ Java_com_library_natives_FsPipelineJNI_pushMethod(JNIEnv *env, jclass clz, jstri
             gJavaVM->DetachCurrentThread();
         }, NULL,dev.getSubscribeTopic());
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushEvent(JNIEnv *env, jclass clz, jobject out) {
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
@@ -668,10 +668,10 @@ Java_com_library_natives_FsPipelineJNI_pushEvent(JNIEnv *env, jclass clz, jobjec
         });
         LOGD("postEvent>>iid>>%s", iid.c_str());
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushNotify(JNIEnv *env, jclass clz, jobject out) {
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
@@ -683,10 +683,10 @@ Java_com_library_natives_FsPipelineJNI_pushNotify(JNIEnv *env, jclass clz, jobje
     if (s_mp) {
         iid = s_mp->postNotify(list);
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushNotifyList(JNIEnv *env, jclass clz, jobject out) {
     std::map<std::string, fs::p2p::Payload::Device> list;
     fs::p2p::Payload::Device fdevice;
@@ -698,10 +698,10 @@ Java_com_library_natives_FsPipelineJNI_pushNotifyList(JNIEnv *env, jclass clz, j
     if (s_mp) {
         iid = s_mp->postNotify(list);
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushReadList(JNIEnv *env, jclass clz, jstring sn,
                                                     jobject out) {
     std::string snStr = jstringToString(env, sn);
@@ -731,10 +731,10 @@ Java_com_library_natives_FsPipelineJNI_pushReadList(JNIEnv *env, jclass clz, jst
             gJavaVM->DetachCurrentThread();
         }, NULL,dev.getSubscribeTopic());
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushRead(JNIEnv *env, jclass clz, jstring sn, jobject out) {
     std::string snStr = jstringToString(env, sn);
     std::map<std::string, fs::p2p::Payload::Device> list;
@@ -764,10 +764,10 @@ Java_com_library_natives_FsPipelineJNI_pushRead(JNIEnv *env, jclass clz, jstring
             gJavaVM->DetachCurrentThread();
         }, NULL,dev.getSubscribeTopic());
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushWriteList(JNIEnv *env, jclass clz, jstring sn,
                                                      jobject out) {
     std::string snStr = jstringToString(env, sn);
@@ -798,10 +798,10 @@ Java_com_library_natives_FsPipelineJNI_pushWriteList(JNIEnv *env, jclass clz, js
             gJavaVM->DetachCurrentThread();
         }, NULL,dev.getSubscribeTopic());
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 
-JNIEXPORT jint JNICALL
+JNIEXPORT jstring JNICALL
 Java_com_library_natives_FsPipelineJNI_pushWrite(JNIEnv *env, jclass clz, jstring sn, jobject out) {
     std::string snStr = jstringToString(env, sn);
     std::map<std::string, fs::p2p::Payload::Device> list;
@@ -830,6 +830,6 @@ Java_com_library_natives_FsPipelineJNI_pushWrite(JNIEnv *env, jclass clz, jstrin
             gJavaVM->DetachCurrentThread();
         }, NULL,dev.getSubscribeTopic());
     }
-    return iid.empty() ? -1 : 0;
+    return iid.empty()?env->NewStringUTF(""):env->NewStringUTF(iid.c_str());
 }
 }

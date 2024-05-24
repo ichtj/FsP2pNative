@@ -471,23 +471,17 @@ jobject convertResponseToJava(JNIEnv *env, const fs::p2p::Response &response) {
     const char *timeStr = response.time.c_str();
     jfieldID actionFieldID = NULL;
     jobject actionEnum = NULL;
-    if (response.action == fs::p2p::Request::Action::Action_Method) {
+    if (response.action == fs::p2p::Response::Action::Action_Method) {
         actionFieldID = env->GetStaticFieldID(actionCls, "Action_Method",
                                               "Lcom/library/natives/Action;");
-    } else if (response.action == fs::p2p::Request::Action::Action_Read) {
+    } else if (response.action == fs::p2p::Response::Action::Action_Read) {
         actionFieldID = env->GetStaticFieldID(actionCls, "Action_Read",
                                               "Lcom/library/natives/Action;");
-    } else if (response.action == fs::p2p::Request::Action::Action_Write) {
+    } else if (response.action == fs::p2p::Response::Action::Action_Write) {
         actionFieldID = env->GetStaticFieldID(actionCls, "Action_Write",
                                               "Lcom/library/natives/Action;");
-    } else if (response.action == fs::p2p::Request::Action::Action_Notify) {
-        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Notify",
-                                              "Lcom/library/natives/Action;");
-    } else if (response.action == fs::p2p::Request::Action::Action_Event) {
+    } else if (response.action == fs::p2p::Response::Action::Action_Event) {
         actionFieldID = env->GetStaticFieldID(actionCls, "Action_Event",
-                                              "Lcom/library/natives/Action;");
-    } else if (response.action == fs::p2p::Request::Action::Action_Broadcast) {
-        actionFieldID = env->GetStaticFieldID(actionCls, "Action_Broadcast",
                                               "Lcom/library/natives/Action;");
     } else {
         actionFieldID = env->GetStaticFieldID(actionCls, "Action_Unknown",

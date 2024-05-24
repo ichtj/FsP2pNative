@@ -271,8 +271,8 @@ public class MainActivity extends AppCompatActivity {
         out.put("fileName", "update.zip");
         out.put("percent", "1%");
         Event event = new Event("file_download_percent", out);
-        int result=FsPipelineJNI.pushEvent(event);
-        Log.d(TAG, "postEventClick: result>>"+result);
+        String iid=FsPipelineJNI.pushEvent(event);
+        handler.sendMessage(handler.obtainMessage(0x00, "postEventClick：iid>"+iid));
     }
 
     public void postEventsClick(View view) {
@@ -289,14 +289,16 @@ public class MainActivity extends AppCompatActivity {
         out2.put("percent", "1%");
         Event event2 = new Event("file_download_percent", out2);
         events.add(event2);
-        FsPipelineJNI.pushEvents(events);
+        String iid=FsPipelineJNI.pushEvents(events);
+        handler.sendMessage(handler.obtainMessage(0x00, "postEventsClick：iid>"+iid));
     }
 
     public void postReadClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("iotcloud_version", "1.00.1");
         Service service = new Service("device", out, 0, "");
-        FsPipelineJNI.pushRead(Fsp2pTools.getTargetSn(), service);
+        String iid=FsPipelineJNI.pushRead(Fsp2pTools.getTargetSn(), service);
+        handler.sendMessage(handler.obtainMessage(0x00, "postReadClick：iid>"+iid));
     }
 
     public void postReadListClick(View view) {
@@ -309,14 +311,16 @@ public class MainActivity extends AppCompatActivity {
         out2.put("androidversion", "7.1.0");
         Service service2 = new Service("device", out, 0, "");
         serviceList.add(service2);
-        FsPipelineJNI.pushReadList(Fsp2pTools.getTargetSn(), serviceList);
+        String iid=FsPipelineJNI.pushReadList(Fsp2pTools.getTargetSn(), serviceList);
+        handler.sendMessage(handler.obtainMessage(0x00, "postReadListClick：iid>"+iid));
     }
 
     public void postWriteClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("dbm", "-1");
         Service service = new Service("network", out, 0, "");
-        FsPipelineJNI.pushWrite(Fsp2pTools.getTargetSn(), service);
+        String iid=FsPipelineJNI.pushWrite(Fsp2pTools.getTargetSn(), service);
+        handler.sendMessage(handler.obtainMessage(0x00, "postWriteClick：iid>"+iid));
     }
 
     public void postWriteListClick(View view) {
@@ -329,14 +333,16 @@ public class MainActivity extends AppCompatActivity {
         out2.put("lteoperator", "zgyd");
         Service service2 = new Service("network", out2, 0, "");
         serviceList.add(service2);
-        FsPipelineJNI.pushWriteList(Fsp2pTools.getTargetSn(), serviceList);
+        String iid=FsPipelineJNI.pushWriteList(Fsp2pTools.getTargetSn(), serviceList);
+        handler.sendMessage(handler.obtainMessage(0x00, "postWriteListClick：iid>"+iid));
     }
 
     public void postNotifyClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("backlight", "248");
         Service service = new Service("device", out, 0, "");
-        FsPipelineJNI.pushNotify(service);
+        String iid=FsPipelineJNI.pushNotify(service);
+        handler.sendMessage(handler.obtainMessage(0x00, "postNotifyClick：iid>"+iid));
     }
 
     public void postNotifyListClick(View view) {
@@ -346,7 +352,8 @@ public class MainActivity extends AppCompatActivity {
         out1.put("lteoperator", "中国移动");
         Service service1 = new Service("network", out1, 0, "");
         serviceList.add(service1);
-        FsPipelineJNI.pushNotifyList(serviceList);
+        String iid=FsPipelineJNI.pushNotifyList(serviceList);
+        handler.sendMessage(handler.obtainMessage(0x00, "postNotifyListClick：iid>"+iid));
     }
 
     public void postMethodClick(View view) {
@@ -354,7 +361,8 @@ public class MainActivity extends AppCompatActivity {
         out1.put("srcPath", "/sdcard/DCIM/test.log");
         out1.put("desPath", "/sdcard/");
         Method out = new Method("file_move", out1, 0, "");
-        FsPipelineJNI.pushMethod(Fsp2pTools.getTargetSn(), out);
+        String iid=FsPipelineJNI.pushMethod(Fsp2pTools.getTargetSn(), out);
+        handler.sendMessage(handler.obtainMessage(0x00, "postMethodClick：iid>"+iid));
     }
 
     public void postMethodsClick(View view) {
@@ -368,6 +376,7 @@ public class MainActivity extends AppCompatActivity {
         out2.put("extension", "zip");
         Method method2 = new Method("file_download", out2, 0, "");
         methodList.add(method2);
-        FsPipelineJNI.pushMethods(Fsp2pTools.getTargetSn(), methodList);
+        String iid=FsPipelineJNI.pushMethods(Fsp2pTools.getTargetSn(), methodList);
+        handler.sendMessage(handler.obtainMessage(0x00, "postMethodClick：iid>"+iid));
     }
 }
