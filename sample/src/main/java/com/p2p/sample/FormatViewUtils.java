@@ -1,32 +1,19 @@
 package com.p2p.sample;
 
-import android.text.Html;
+import android.content.Context;
+import android.content.res.Resources;
 import android.text.Layout;
 import android.text.method.ScrollingMovementMethod;
 import android.widget.TextView;
 
-import androidx.annotation.IntDef;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+import androidx.core.text.HtmlCompat;
 
 public class FormatViewUtils {
-    /*红色*/
-    public static final int C_RED = 0x10;
-    /*绿色*/
-    public static final int C_GREEN = 0x11;
-    /*黑色*/
-    public static final int C_BLACK = 0x12;
-    /*灰色*/
-    public static final int C_GREY = 0x13;
-    /*橙色*/
-    public static final int C_ORANGE = 0x14;
-    /*蓝色*/
-    public static final int C_BLUE = 0x15;
+    private static int MAXIMUM_ROW = 300;
+    private static int MAXIMUM_LENGTH = 10000;
 
-    @IntDef({C_RED, C_GREEN, C_BLACK, C_GREY, C_ORANGE, C_BLUE})
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface IColor {
+    public static void setMaximumRow(int num) {
+        MAXIMUM_ROW = num;
     }
 
     /**
@@ -35,64 +22,103 @@ public class FormatViewUtils {
      * @param textView
      */
     public static void setMovementMethod(TextView textView) {
-        textView.setMovementMethod(ScrollingMovementMethod.getInstance());
+        textView.setMovementMethod (ScrollingMovementMethod.getInstance ( ));
     }
+
+    /**
+     * scroll back to top
+     *
+     * @param textView
+     */
+    public static void scrollBackToTop(TextView textView) {
+        textView.scrollTo (0, 0);
+        textView.setText ("");
+    }
+
+    public static void formatData(TextView tv, String str, String pattern){
+        formatData(tv, str, pattern,false);
+    }
+
+    /**
+     * show data to Activity
+     *
+     * @param str Support html tags
+     * @param pattern time format yyyyMMddHHmmss or ....
+     */
+    public static void formatData(TextView tv, String str, String pattern,boolean jumpFirstLine) {
+        // 假设 ObjectUtils.isEmpty 和 TimeUtils.getTodayDateHms 已经定义
+        if (tv != null && !ObjectUtils.isEmpty(str)) {
+
+            // --- 换行处理的核心优化 ---
+            // 1. 处理 Windows/DOS 换行：将 "\r\n" 替换为 "<br>"
+            String htmlStr = str.replace("\r\n", "<br>");
+
+            // 2. 处理 Unix/Linux/Android 换行：将单个 "\n" 替换为 "<br>"
+            htmlStr = htmlStr.replace("\n", "<br>");
+
+            // 3. (可选) 处理旧 Mac 换行：将单个 "\r" 替换为 "<br>"
+            htmlStr = htmlStr.replace("\r", "<br>");
+            // ------------------------
+
+            // 如果行数大于 MAXIMUM_ROW ，清空内容
+            CharSequence currentText = tv.getText();
+            if (currentText.length() > MAXIMUM_LENGTH || tv.getLineCount() > MAXIMUM_ROW) {
+                tv.setText("");
+            }
+
+            boolean isNull = ObjectUtils.isEmpty(pattern);
+            tv.append(isNull ? "" : TimeUtils.getTodayDateHms(pattern) + "：");
+
+            // 2. 使用 Html.fromHtml() 处理替换后的 HTML 字符串
+            // 推荐使用兼容性更好的 HtmlCompat
+            tv.append(HtmlCompat.fromHtml(htmlStr, HtmlCompat.FROM_HTML_MODE_LEGACY));
+
+            // 3. 在日志条目末尾追加的换行符 (保持不变)
+            tv.append("\n");
+
+            // 滚动逻辑 (保持不变)
+            Layout layout = tv.getLayout();
+            if (layout != null) {
+                if (jumpFirstLine){
+                    tv.scrollTo(0, 0);
+                }else{
+                    int scrollAmount = layout.getLineTop(tv.getLineCount()) - tv.getHeight();
+                    tv.scrollTo(0, scrollAmount > 0 ? scrollAmount : 0);
+                }
+            }
+        }
+    }
+
+
 
     /**
      * show data to Activity
      *
      * @param htmlStr Support html tags
      */
-    public static void formatData(TextView textView, String htmlStr) {
-        if (textView != null && !ObjectUtils.isEmpty(htmlStr)) {
-            textView.append(Html.fromHtml(TimeUtils.getTodayDateHms("yyyy-MM-dd-HHmmss-SS") + "：" + htmlStr));
-            textView.append("\n");
-            Layout layout=textView.getLayout();
-            if (layout!=null){
-                int scrollAmount = layout.getLineTop(textView.getLineCount()) - textView.getHeight();
-                if (scrollAmount > 0) {
-                    textView.scrollTo(0, scrollAmount);
-                } else {
-                    textView.scrollTo(0, 0);
-                }
-            }
-        }
+    public static void formatData(TextView tv, String htmlStr) {
+        formatData (tv, htmlStr, "",false);
     }
 
-    public static String formatUnderlin(@IColor int color, String content) {
-        return "<u><font color='" + getColor(color) + "'>" + content + "</font></u>";
+    public static String formatUnderline(Context context, int color, String content) {
+        return "<u><font color='" + getHexColor (context,color) + "'>" + content + "</font></u>";
     }
 
-    public static String formatColor(String content, @IColor int color) {
-        if (ObjectUtils.isEmpty(content)) {
+
+    public static String formatColor(Context context, String content, int color) {
+        if (ObjectUtils.isEmpty (content)) {
             return content;
         } else {
-            return "<font color=\"" + getColor(color) + "\">" + content + "</font>";
+            return "<font color=\"" + getHexColor (context,color) + "\">" + content + "</font>";
         }
     }
 
-    public static String formatColor(String content, String color) {
-        if (ObjectUtils.isEmpty(content)) {
-            return content;
-        } else {
-            return "<font color=\"" + color + "\">" + content + "</font>";
-        }
-    }
-
-    private static String getColor(@IColor int color) {
-        if (color == C_RED) {
-            return "#FF0000";
-        } else if (color == C_GREEN) {
-            return "#00FF37";
-        } else if (color == C_BLACK) {
-            return "#111010";
-        } else if (color == C_GREY) {
-            return "#767876";
-        } else if (color == C_ORANGE) {
-            return "#e17808";
-        } else if (color == C_BLUE) {
-            return "#0000FB";
-        }
-        return "#111010";
+    public static String getHexColor(Context context, int color) {
+        // 获取 Resources 对象
+        Resources res = context.getResources ( );
+        // 通过 Resources 对象获取颜色值
+        int colorAccentValue = res.getColor (color);
+        // 将颜色值转换为十六进制表示的字符串
+        return String.format ("#%06X", (0xFFFFFF & colorAccentValue));
     }
 }

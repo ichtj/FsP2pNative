@@ -8,7 +8,7 @@
 #include <unistd.h>
 #include <jni.h>
 #include "tools.h"
-#include "log.h"
+#include "Logger.h"
 #include <memory>
 #include "fs_p2p/MessagePipeline.h"
 

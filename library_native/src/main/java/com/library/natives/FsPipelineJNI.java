@@ -7,9 +7,9 @@ import java.util.Map;
  * 管道控制
  */
 public class FsPipelineJNI {
-    static {
-        System.loadLibrary("FsPipelineJNI");
-    }
+//    static {
+//        System.loadLibrary("FsPipelineJNI");
+//    }
 
     /**
      * 设置log开关

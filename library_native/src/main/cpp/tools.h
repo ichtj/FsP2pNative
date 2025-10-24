@@ -1,5 +1,6 @@
 #include <string>
 #include "fs_p2p/MessagePipeline.h"
+#include <android/log.h>
 
 struct ConnParams {
     std::string sn;
