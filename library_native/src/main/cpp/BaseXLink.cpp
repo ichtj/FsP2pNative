@@ -118,36 +118,6 @@ static std::string getValue(const std::map<std::string, ordered_json> &m,
     return defaultValue;
 }
 
-auto callback=[](const fs::p2p::Response req, void *){
-    std::map<std::string, fs::p2p::Payload::Device> devices=req.payload.devices;
-    for (const auto &pair : devices) {
-        LOGI("SN: %s, Product ID: %s", pair.second.sn.c_str(), pair.second.product_id.c_str());
-        for (const auto &s : pair.second.services) {
-            LOGI("Service: %s, reason_code: %d, reason_string: %s",
-                 s.name.c_str(), s.reason_code, s.reason_string.c_str());
-            for (const auto &p : s.propertys) {
-                LOGI("Service>>%s - Key: %s, Value: %s", "propertys", p.first.c_str(), p.second.dump().c_str());
-            }
-        }
-        for (const auto &m : pair.second.methods) {
-            LOGI("Method: %s, reason_code: %d, reason_string: %s",
-                 m.name.c_str(), m.reason_code, m.reason_string.c_str());
-              std::string state= getValue(m.params,"state","0");
-              std::string description= getValue(m.params,"desc","");
-            iot_connect_state_value=(state=="1")?1:-1;
-              g_i_mqtt_callback.callIotConnState(gJvm,state=="1",description);
-        }
-        for (const auto &e : pair.second.events) {
-            LOGI("Event: %s, reason_code: %d, reason_string: %s",
-                 e.name.c_str(), e.reason_code, e.reason_string.c_str());
-            for (const auto &p : e.params) {
-                LOGI("Event>>%s - Key: %s, Value: %s", "events", p.first.c_str(), p.second.dump().c_str());
-            }
-        }
-    }
-    iot_connect_state_value=-1;
-};
-
 JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
         (JNIEnv* env, jclass , jobject information, jobject xCoreBean,jstring jProtocol,
          jobject i_pipeline_callback)
@@ -353,7 +323,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
             // --- 遍历 Services ---
             for (const auto& service : device.services) {
                 for (const auto& prop_pair : service.propertys) {
-                    BaseData baseData={0x105,req.iid,service.name+"-"+prop_pair.first, service.propertys};
+                    BaseData baseData={0x105,req.iid,service.name/*+"-"+prop_pair.first*/, service.propertys};
                     g_i_mqtt_callback.callMsgArrives(gJvm,baseData);
                 }
             }
@@ -364,7 +334,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
             // --- 遍历 Services ---
             for (const auto& service : device.services) {
                 for (const auto& prop_pair : service.propertys) {
-                    BaseData baseData={0x104,req.iid,service.name+"-"+prop_pair.first, service.propertys};
+                    BaseData baseData={0x104,req.iid,service.name/*+"-"+prop_pair.first*/, service.propertys};
                     g_i_mqtt_callback.callMsgArrives(gJvm,baseData);
                 }
             }
