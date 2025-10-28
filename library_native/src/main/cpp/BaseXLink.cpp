@@ -48,7 +48,7 @@ int convertToRequestAction(int action) {
             return fs::p2p::Request::Action::Action_Read;
         case 0x106:
             return fs::p2p::Request::Action::Action_Broadcast;
-        case 0x107:
+        case 0x101:
             return fs::p2p::Request::Action::Action_Notify;
         default:
             return action;
@@ -333,7 +333,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
             LOGD( "setRequestCallback Action_Write iid=%s", req.iid.c_str());
             // --- 遍历 Services ---
             for (const auto& service : device.services) {
-                for (const auto& prop_pair : service.propertys) {
+                for (const auto& prop_pair : service.propertys) {//network-net_type
                     BaseData baseData={0x104,req.iid,service.name/*+"-"+prop_pair.first*/, service.propertys};
                     g_i_mqtt_callback.callMsgArrives(gJvm,baseData);
                 }

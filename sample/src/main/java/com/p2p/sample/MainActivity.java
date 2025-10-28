@@ -221,14 +221,14 @@ public class MainActivity extends AppCompatActivity {
     public void postNotifyClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("base_station_port", "192.158.145.100");
-        boolean isComplete= BaseFsP2pTools.postMsg (PutType.NOTIFY,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","network",out);
+        boolean isComplete= BaseFsP2pTools.postMsg (PutType.UPLOAD,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","network",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postNotifyClick：isComplete>"+isComplete));
     }
 
     public void postMethodClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("cmd", "ls -l");
-        boolean isComplete= BaseFsP2pTools.postMsg (PutType.NOTIFY,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","remote_cmd",out);
+        boolean isComplete= BaseFsP2pTools.postMsg (PutType.UPLOAD,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","remote_cmd",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postMethodClick：isComplete>"+isComplete));
     }
 }

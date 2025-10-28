@@ -27,6 +27,7 @@ JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM *jvm, void *reserved) {
     if (jvm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) != JNI_OK) {
         return JNI_ERR; // 返回错误代码表示加载失败
     }
+    testFunction();
     callbackClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_IOTCALLBACK));
     requestClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_REQUEST));
     responseClass = (jclass) env->NewGlobalRef(env->FindClass(CLASS_RESPONSE));
