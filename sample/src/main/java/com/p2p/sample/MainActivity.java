@@ -14,31 +14,20 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import com.library.natives.BaseData;
-import com.library.natives.BaseXLink;
-import com.library.natives.ConnParams;
-import com.library.natives.Device;
+import com.library.natives.BaseFsP2pTools;
 import com.library.natives.IPipelineCallback;
 import com.library.natives.Infomation;
-import com.library.natives.Payload;
 import com.library.natives.PutType;
-import com.library.natives.Response;
 import com.library.natives.SubDev;
-import com.library.natives.Event;
 import com.library.natives.FsPipelineJNI;
 import com.library.natives.Fsp2pTools;
-import com.library.natives.Method;
-import com.library.natives.PipelineCallback;
-import com.library.natives.Request;
-import com.library.natives.Service;
 import com.library.natives.Type;
 import com.library.natives.XCoreBean;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.class.getSimpleName();
@@ -61,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         btnPrintLog = findViewById(R.id.btnPrintLog);
-        btnPrintLog.setText(BaseXLink.isLogEnable() ? "日志:开" : "日志:关");
+        btnPrintLog.setText(BaseFsP2pTools.isLogEnable() ? "日志:开" : "日志:关");
         tvResult = findViewById(R.id.tvResult);
         etClientId = findViewById(R.id.etClientId);
         String readSn= Fsp2pTools.registerClientId();
@@ -75,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
         Infomation infomation=new Infomation (readSn,"22122a20-5ea8-40ef-b7d2-329ee4207474","xx","iotCloud",
                 Type.Unknown,-1);
         XCoreBean xCoreBean=new XCoreBean ("192.168.1.127",1883,"fswl","123456" );
-        BaseXLink.connect (infomation,xCoreBean,JSON_PROTOCOL, new IPipelineCallback ( ) {
+        BaseFsP2pTools.connect (infomation,xCoreBean,JSON_PROTOCOL, new IPipelineCallback ( ) {
             @Override
             public void p2pConnState(boolean connected, String description) {
                 handler.sendMessage(handler.obtainMessage(0x00, "p2pConnState : "+ connected+",description>>"+description ));
@@ -113,7 +102,7 @@ public class MainActivity extends AppCompatActivity {
                         maps.put (key,value);
                     }
                 }
-                BaseXLink.putReply (baseData.iPutType,baseData.iid,baseData.operation, maps);
+                BaseFsP2pTools.putReply (baseData.iPutType,baseData.iid,baseData.operation, maps);
             }
 
             @Override
@@ -165,18 +154,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void getConnectStateClick(View view) {
-        boolean connState=BaseXLink.getConnectStatus();
+        boolean connState= BaseFsP2pTools.getConnectStatus();
         handler.sendMessage(handler.obtainMessage(0x00, "getIotConnectState："+connState));
     }
 
     public void disConnectClick(View view) {
-        BaseXLink.disConnect ();
+        BaseFsP2pTools.disConnect ();
     }
 
     public void subscribeClick(View view) {
         Infomation infomation=new Infomation ("FSM-0ba5f8-000070","b3f08e21-d8af-4c34-adb8-f07de0edde79","xx","edge_sub_dev",
                 Type.Unknown,-1);
-        boolean isComplete=BaseXLink.subscribe (infomation);
+        boolean isComplete= BaseFsP2pTools.subscribe (infomation);
         handler.sendMessage(handler.obtainMessage(0x00, "subscribeClick>>infomation : "+infomation+",isComplete : "+isComplete));
     }
 
@@ -184,7 +173,7 @@ public class MainActivity extends AppCompatActivity {
     public void unSubscribeClick(View view) {
         Infomation infomation=new Infomation ("FSM-0ba5f8-000070","b3f08e21-d8af-4c34-adb8-f07de0edde79","xx","edge_sub_dev",
                 Type.Unknown,-1);
-        boolean isComplete=BaseXLink.unSubscribe (infomation);
+        boolean isComplete= BaseFsP2pTools.unSubscribe (infomation);
         handler.sendMessage(handler.obtainMessage(0x00, "unSubscribeClick>>infomation : "+infomation+",isComplete : "+isComplete));
     }
 
@@ -202,7 +191,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void printLogClick(View view) {
         isEnable = !isEnable;
-        BaseXLink.logEnable(isEnable);
+        BaseFsP2pTools.logEnable(isEnable);
         btnPrintLog.setText(isEnable ? "日志:开" : "日志:关");
     }
 
@@ -210,14 +199,14 @@ public class MainActivity extends AppCompatActivity {
         Map<String, Object> out = new HashMap<>();
         out.put("fileName", "update.zip");
         out.put("percent", "1%");
-        boolean isComplete=BaseXLink.postMsg (PutType.EVENT,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","file_download_percent",out);
+        boolean isComplete= BaseFsP2pTools.postMsg (PutType.EVENT,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","file_download_percent",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postEventClick：isComplete>"+isComplete));
     }
 
     public void postReadClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("android_version", "");
-        boolean isComplete=BaseXLink.postMsg (PutType.GETPERTIES,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","device",out);
+        boolean isComplete= BaseFsP2pTools.postMsg (PutType.GETPERTIES,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","device",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postReadClick：isComplete>"+isComplete));
     }
 
@@ -225,21 +214,21 @@ public class MainActivity extends AppCompatActivity {
     public void postWriteClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("backlight", "150");
-        boolean isComplete=BaseXLink.postMsg (PutType.SETPERTIES,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","device",out);
+        boolean isComplete= BaseFsP2pTools.postMsg (PutType.SETPERTIES,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","device",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postWriteClick：isComplete>"+isComplete));
     }
 
     public void postNotifyClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("base_station_port", "192.158.145.100");
-        boolean isComplete=BaseXLink.postMsg (PutType.NOTIFY,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","network",out);
+        boolean isComplete= BaseFsP2pTools.postMsg (PutType.NOTIFY,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","network",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postNotifyClick：isComplete>"+isComplete));
     }
 
     public void postMethodClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("cmd", "ls -l");
-        boolean isComplete=BaseXLink.postMsg (PutType.NOTIFY,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","remote_cmd",out);
+        boolean isComplete= BaseFsP2pTools.postMsg (PutType.NOTIFY,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","remote_cmd",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postMethodClick：isComplete>"+isComplete));
     }
 }

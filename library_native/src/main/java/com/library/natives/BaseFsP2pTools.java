@@ -2,7 +2,7 @@ package com.library.natives;
 
 import java.util.Map;
 
-public class BaseXLink {
+public class BaseFsP2pTools {
     static {
         System.loadLibrary("BaseXLink");
     }

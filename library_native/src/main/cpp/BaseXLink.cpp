@@ -72,17 +72,17 @@ int convertToRequestAction(int action) {
 extern "C" {
 
 JNIEXPORT void JNICALL
-Java_com_library_natives_BaseXLink_logEnable(JNIEnv *env, jclass clz,
-                                                 jboolean isEnable) {
+Java_com_library_natives_BaseFsP2pTools_logEnable(JNIEnv *env, jclass clz,
+                                                  jboolean isEnable) {
     setLoggingEnabled(isEnable);
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_library_natives_BaseXLink_isLogEnable(JNIEnv *env, jclass clz) {
+Java_com_library_natives_BaseFsP2pTools_isLogEnable(JNIEnv *env, jclass clz) {
     return getLoggingEnabled();
 }
 
-JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseXLink_getConnectStatus
+JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_getConnectStatus
         (JNIEnv* env, jclass /*clazz*/)
 {
     fs::p2p::MessagePipeline *mp = getGlobalPipeline();
@@ -148,7 +148,7 @@ auto callback=[](const fs::p2p::Response req, void *){
     iot_connect_state_value=-1;
 };
 
-JNIEXPORT void JNICALL Java_com_library_natives_BaseXLink_connect
+JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
         (JNIEnv* env, jclass , jobject information, jobject xCoreBean,jstring jProtocol,
          jobject i_pipeline_callback)
 {
@@ -404,7 +404,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseXLink_connect
 }
 
 
-JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseXLink_unSubscribe
+JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_unSubscribe
         (JNIEnv* env, jclass, jobject information) {
     if (!information){
         return false;
@@ -455,7 +455,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseXLink_unSubscribe
     return result==0;
 }
 
-JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseXLink_subscribe
+JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_subscribe
         (JNIEnv* env, jclass, jobject information) {
     if (!information){
         g_i_mqtt_callback.callP2pConnState(gJvm,false,"connection state changed7");
@@ -508,7 +508,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseXLink_subscribe
     deleteLocalRefIf(jTypeObject); // 清理获取到的 Type 对象
     return result==0;
 }
-JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseXLink_putReply
+JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_putReply
         (JNIEnv* env, jclass, jint i_put_type, jstring iid, jstring operation, jobject data_map )
 {
     BaseData baseData;
@@ -601,7 +601,7 @@ static std::vector<std::string> splitJString(JNIEnv *env, jstring jname) {
 }
 
 
-JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseXLink_postMsg
+JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
         (JNIEnv* env, jclass, jint i_put_type , jstring target_sn, jstring p_did , jstring jnode, jobject jparams )
 {
     std::string targetSnStr = jstrToStd(env, target_sn);
@@ -682,7 +682,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseXLink_postMsg
     return !iid.empty();
 }
 
-JNIEXPORT void JNICALL Java_com_library_natives_BaseXLink_disConnect
+JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_disConnect
         (JNIEnv* env, jclass)
 {
     std::lock_guard<std::mutex> lk(s_mp_mutex);
