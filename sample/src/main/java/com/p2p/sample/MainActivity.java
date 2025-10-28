@@ -17,7 +17,7 @@ import com.library.natives.BaseData;
 import com.library.natives.BaseXLink;
 import com.library.natives.ConnParams;
 import com.library.natives.Device;
-import com.library.natives.IMqttCallback;
+import com.library.natives.IPipelineCallback;
 import com.library.natives.Infomation;
 import com.library.natives.Payload;
 import com.library.natives.PutType;
@@ -31,6 +31,7 @@ import com.library.natives.PipelineCallback;
 import com.library.natives.Request;
 import com.library.natives.Service;
 import com.library.natives.Type;
+import com.library.natives.XCoreBean;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -72,11 +73,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void toConnectMq(String readSn) {
         Infomation infomation=new Infomation (readSn,"22122a20-5ea8-40ef-b7d2-329ee4207474","xx","iotCloud",
-                Type.Unknown,-1,"192.168.1.127",1883,"fswl","123456",JSON_PROTOCOL );
-        BaseXLink.connect (infomation, new IMqttCallback ( ) {
+                Type.Unknown,-1);
+        XCoreBean xCoreBean=new XCoreBean ("192.168.1.127",1883,"fswl","123456" );
+        BaseXLink.connect (infomation,xCoreBean,JSON_PROTOCOL, new IPipelineCallback ( ) {
             @Override
-            public void connState(boolean connected, String description) {
-                handler.sendMessage(handler.obtainMessage(0x00, "connState : "+ connected+",description>>"+description ));
+            public void p2pConnState(boolean connected, String description) {
+                handler.sendMessage(handler.obtainMessage(0x00, "p2pConnState : "+ connected+",description>>"+description ));
+            }
+
+
+            @Override
+            public void iotConnState(boolean connected, String description) {
+                handler.sendMessage(handler.obtainMessage(0x00, "mqttConnState : "+ connected+",description>>"+description ));
             }
 
             @Override
@@ -152,160 +160,32 @@ public class MainActivity extends AppCompatActivity {
         }.start();
     }
 
-    public ConnParams getConnParams() {
-        ConnParams connParams = new ConnParams();
-        connParams.subDev = new SubDev();
-        connParams.subDev.sn = etClientId.getText().toString().trim();
-        connParams.subDev.name = "xxx";
-        connParams.subDev.product_id = "19";
-        connParams.subDev.model = "iotcloud";
-        connParams.subDev.type = Type.Unknown;
-        connParams.subDev.version = -1;
-        connParams.json_protocol = Fsp2pTools.convertToJsonToBase64(JSON_PROTOCOL);
-        connParams.userName = "fswl";
-        connParams.passWord = "123456";
-        connParams.host = "192.168.1.127";
-        connParams.port = 1883;
-        return connParams;
-    }
-
-
-    int count = 0;
-    PipelineCallback pipelineCallback1 = new PipelineCallback() {
-        @Override
-        public void connectStatus(boolean status) {
-            handler.sendMessage(handler.obtainMessage(0x00, "connectStatus1>>" + status));
-            if (status) {
-                FsPipelineJNI.postOnLine();
-                hearbeat();
-            }
-        }
-
-        @Override
-        public void errCallback(int errCode, String description) {
-            handler.sendMessage(handler.obtainMessage(0x00, "errCallback1: errCode>>" + errCode + ",description>>" + description));
-        }
-
-        @Override
-        public void pipelineLog(int level, String str) {
-            handler.sendMessage(handler.obtainMessage(0x00, "pipelineLog1: level>>" + level + ",str>>" + str));
-        }
-
-        @Override
-        public void request(Request request) {
-            Map<String, Object> out = new HashMap<>();
-            switch (request.action) {
-                case Action_Read:
-                    Payload payload = request.payload;
-                    Map<String, Device> devices = payload.devices;
-                    Set<String> set = devices.keySet();
-                    for (String key : set) {
-                        Device device = devices.get(key);
-                        List<Service> services = device.services;
-                        for (Service s : services) {
-                            Map<String, Object> in = s.propertys;
-                            Set<String> inSet = in.keySet();
-                            for (String k : inSet) {
-                                Log.d(TAG, "receive1: key>>" + key + ",device>>" + device.toString());
-                                out.put(k, (count++) + "");
-                                FsPipelineJNI.replyService(request, out);
-                            }
-                        }
-
-                    }
-                    break;
-                case Action_Method:
-                    out.put("params0", false);
-                    out.put("params1", "1");
-                    out.put("params2", "?");
-                    out.put("params3", null);
-                    out.put("params4", "{\"name\":\"ichtj\",\"age\":18,\"sex\":\"男\"}");
-                    out.put("params5", "[ \"dfgsdg\" ] The path entered does not exist！");
-                    out.put("params6", 2);
-                    out.put("params6", 1.02);
-                    int result = FsPipelineJNI.replyMethod(request, out);
-                    Log.d(TAG, "receive1: result>>" + result);
-                    break;
-            }
-            handler.sendMessage(handler.obtainMessage(0x00, "receive1: request>>" + request));
-        }
-
-        @Override
-        public void response(Response response) {
-            handler.sendMessage(handler.obtainMessage(0x00, "response1: response>>" + response));
-        }
-    };
-
-    PipelineCallback pipelineCallback2 = new PipelineCallback() {
-        @Override
-        public void connectStatus(boolean status) {
-            handler.sendMessage(handler.obtainMessage(0x00, "connectStatus2>>" + status));
-            if (status) {
-                FsPipelineJNI.postOnLine();
-                hearbeat();
-            }
-        }
-
-        @Override
-        public void errCallback(int errCode, String description) {
-            handler.sendMessage(handler.obtainMessage(0x00, "errCallback2: errCode>>" + errCode + ",description>>" + description));
-        }
-
-        @Override
-        public void pipelineLog(int level, String str) {
-            handler.sendMessage(handler.obtainMessage(0x00, "pipelineLog2: level>>" + level + ",str>>" + str));
-        }
-
-        @Override
-        public void response(Response response) {
-            Log.d(TAG, "response2: "+response);
-            handler.sendMessage(handler.obtainMessage(0x00, "response2: response>>" + response));
-        }
-
-        @Override
-        public void request(Request request) {
-            try {
-                Thread.sleep(5000);
-            } catch (Throwable throwable) {
-                throwable.printStackTrace();
-            }
-            Log.d(TAG, "receive2: threadName>>" + Thread.currentThread().getName());
-            Map<String, Object> params = new HashMap<>();
-            params.put("params1", "1");
-            params.put("params2", "2");
-            int result = FsPipelineJNI.replyMethod(request, params);
-            Log.d(TAG, "receive2: result>>" + result);
-            handler.sendMessage(handler.obtainMessage(0x00, "request2: request>>" + request));
-        }
-    };
-
-    public void unRegisterCallback1(View view) {
-        FsPipelineJNI.unRegisterCallback(pipelineCallback1);
-    }
-
-    public void unRegisterCallback2(View view) {
-        FsPipelineJNI.unRegisterCallback(pipelineCallback2);
-    }
-
-    public void registerCallback1(View view) {
-        FsPipelineJNI.addPipelineCallback(pipelineCallback1);
-    }
-
-    public void registerCallback2(View view) {
-        FsPipelineJNI.addPipelineCallback(pipelineCallback2);
-    }
-
     public void connectClick(View view) {
         toConnectMq (etClientId.getText ().toString ().trim ());
     }
 
     public void getConnectStateClick(View view) {
         boolean connState=BaseXLink.getConnectStatus();
-        handler.sendMessage(handler.obtainMessage(0x00, "getConnectState："+connState));
+        handler.sendMessage(handler.obtainMessage(0x00, "getIotConnectState："+connState));
     }
 
     public void disConnectClick(View view) {
         BaseXLink.disConnect ();
+    }
+
+    public void subscribeClick(View view) {
+        Infomation infomation=new Infomation ("FSM-0ba5f8-000070","b3f08e21-d8af-4c34-adb8-f07de0edde79","xx","edge_sub_dev",
+                Type.Unknown,-1);
+        boolean isComplete=BaseXLink.subscribe (infomation);
+        handler.sendMessage(handler.obtainMessage(0x00, "subscribeClick>>infomation : "+infomation+",isComplete : "+isComplete));
+    }
+
+
+    public void unSubscribeClick(View view) {
+        Infomation infomation=new Infomation ("FSM-0ba5f8-000070","b3f08e21-d8af-4c34-adb8-f07de0edde79","xx","edge_sub_dev",
+                Type.Unknown,-1);
+        boolean isComplete=BaseXLink.unSubscribe (infomation);
+        handler.sendMessage(handler.obtainMessage(0x00, "unSubscribeClick>>infomation : "+infomation+",isComplete : "+isComplete));
     }
 
     public void getDeviceModelClick(View view) {
@@ -330,112 +210,36 @@ public class MainActivity extends AppCompatActivity {
         Map<String, Object> out = new HashMap<>();
         out.put("fileName", "update.zip");
         out.put("percent", "1%");
-        boolean isComplete=BaseXLink.postMsg (PutType.EVENT,"FSM-0ba5f8-000069","b3f08e21-d8af-4c34-adb8-f07de0edde79","snapshot",out);
+        boolean isComplete=BaseXLink.postMsg (PutType.EVENT,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","file_download_percent",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postEventClick：isComplete>"+isComplete));
-    }
-
-    public void postEventsClick(View view) {
-        List<Event> events = new ArrayList<>();
-        Map<String, String> out1 = new HashMap<>();
-        out1.put("apkName", "test");
-        out1.put("packageName", "com.face.test");
-        out1.put("isSys", "true");
-        out1.put("unInstallStatus", "true");
-        Event event1 = new Event("apk_uninstall_result", out1);
-        events.add(event1);
-        Map<String, String> out2 = new HashMap<>();
-        out2.put("fileName", "update.zip");
-        out2.put("percent", "1%");
-        Event event2 = new Event("file_download_percent", out2);
-        events.add(event2);
-        String iid=FsPipelineJNI.pushEvents(events);
-        handler.sendMessage(handler.obtainMessage(0x00, "postEventsClick：iid>"+iid));
     }
 
     public void postReadClick(View view) {
         Map<String, Object> out = new HashMap<>();
-        out.put("iotcloud_version", "1.00.1");
-        Service service = new Service("device", out, 0, "");
-        String iid=FsPipelineJNI.pushRead(Fsp2pTools.getTargetSn(), service);
-        handler.sendMessage(handler.obtainMessage(0x00, "postReadClick：iid>"+iid));
+        out.put("android_version", "");
+        boolean isComplete=BaseXLink.postMsg (PutType.GETPERTIES,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","device",out);
+        handler.sendMessage(handler.obtainMessage(0x00, "postReadClick：isComplete>"+isComplete));
     }
 
-    public void postReadListClick(View view) {
-        List<Service> serviceList = new ArrayList<>();
-        Map<String, Object> out = new HashMap<>();
-        out.put("nettype", "unknown");
-        Service service1 = new Service("network", out, 0, "");
-        serviceList.add(service1);
-        Map<String, String> out2 = new HashMap<>();
-        out2.put("androidversion", "7.1.0");
-        Service service2 = new Service("device", out, 0, "");
-        serviceList.add(service2);
-        String iid=FsPipelineJNI.pushReadList(Fsp2pTools.getTargetSn(), serviceList);
-        handler.sendMessage(handler.obtainMessage(0x00, "postReadListClick：iid>"+iid));
-    }
 
     public void postWriteClick(View view) {
         Map<String, Object> out = new HashMap<>();
-        out.put("dbm", "-1");
-        Service service = new Service("network", out, 0, "");
-        String iid=FsPipelineJNI.pushWrite(Fsp2pTools.getTargetSn(), service);
-        handler.sendMessage(handler.obtainMessage(0x00, "postWriteClick：iid>"+iid));
-    }
-
-    public void postWriteListClick(View view) {
-        List<Service> serviceList = new ArrayList<>();
-        Map<String, Object> out1 = new HashMap<>();
-        out1.put("topapp", "com.test.ichtj");
-        Service service1 = new Service("device", out1, 0, "");
-        serviceList.add(service1);
-        Map<String, Object> out2 = new HashMap<>();
-        out2.put("lteoperator", "zgyd");
-        Service service2 = new Service("network", out2, 0, "");
-        serviceList.add(service2);
-        String iid=FsPipelineJNI.pushWriteList(Fsp2pTools.getTargetSn(), serviceList);
-        handler.sendMessage(handler.obtainMessage(0x00, "postWriteListClick：iid>"+iid));
+        out.put("backlight", "150");
+        boolean isComplete=BaseXLink.postMsg (PutType.SETPERTIES,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","device",out);
+        handler.sendMessage(handler.obtainMessage(0x00, "postWriteClick：isComplete>"+isComplete));
     }
 
     public void postNotifyClick(View view) {
         Map<String, Object> out = new HashMap<>();
-        out.put("backlight", "248");
-        Service service = new Service("device", out, 0, "");
-        String iid=FsPipelineJNI.pushNotify(service);
-        handler.sendMessage(handler.obtainMessage(0x00, "postNotifyClick：iid>"+iid));
-    }
-
-    public void postNotifyListClick(View view) {
-        List<Service> serviceList = new ArrayList<>();
-        Map<String, Object> out1 = new HashMap<>();
-        out1.put("iccid", "123456");
-        out1.put("lteoperator", "中国移动");
-        Service service1 = new Service("network", out1, 0, "");
-        serviceList.add(service1);
-        String iid=FsPipelineJNI.pushNotifyList(serviceList);
-        handler.sendMessage(handler.obtainMessage(0x00, "postNotifyListClick：iid>"+iid));
+        out.put("base_station_port", "192.158.145.100");
+        boolean isComplete=BaseXLink.postMsg (PutType.NOTIFY,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","network",out);
+        handler.sendMessage(handler.obtainMessage(0x00, "postNotifyClick：isComplete>"+isComplete));
     }
 
     public void postMethodClick(View view) {
-        Map<String, Object> out1 = new HashMap<>();
-        out1.put("srcPath", "/sdcard/DCIM/test.log");
-        out1.put("desPath", "/sdcard/");
-        Method out = new Method("file_move", out1, 0, "");
-        String iid=FsPipelineJNI.pushMethod(Fsp2pTools.getTargetSn(), out);
-        handler.sendMessage(handler.obtainMessage(0x00, "postMethodClick：iid>"+iid));
-    }
-
-    public void postMethodsClick(View view) {
-        List<Method> methodList = new ArrayList<>();
-        Map<String, Object> out1 = new HashMap<>();
-        out1.put("filePath", "/sdcard/DCIM/");
-        Method method1 = new Method("file_del", out1, 0, "");
-        Map<String, Object> out2 = new HashMap<>();
-        out2.put("url", "www.baidu.com");
-        out2.put("name", "update");
-        out2.put("extension", "zip");
-        Method method2 = new Method("file_download", out2, 0, "");
-        methodList.add(method2);
-        String iid=FsPipelineJNI.pushMethods(Fsp2pTools.getTargetSn(), methodList);
-        handler.sendMessage(handler.obtainMessage(0x00, "postMethodClick：iid>"+iid));
+        Map<String, Object> out = new HashMap<>();
+        out.put("cmd", "ls -l");
+        boolean isComplete=BaseXLink.postMsg (PutType.NOTIFY,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","remote_cmd",out);
+        handler.sendMessage(handler.obtainMessage(0x00, "postMethodClick：isComplete>"+isComplete));
     }
 }

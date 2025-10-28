@@ -55,9 +55,18 @@
             android:layout_gravity="center"
             android:layout_margin="5dp"
             android:layout_weight="1"
-            android:onClick="getDeviceModelClick"
+            android:onClick="subscribeClick"
             android:singleLine="true"
-            android:text="获取子设备列表" />
+            android:text="订阅" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="unSubscribeClick"
+            android:singleLine="true"
+            android:text="取消订阅" />
 
         <Button
             android:layout_width="wrap_content"
@@ -94,16 +103,6 @@
             android:singleLine="true"
             android:text="事件(一)" />
 
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="5dp"
-            android:layout_weight="1"
-            android:onClick="postEventsClick"
-            android:singleLine="true"
-            android:text="事件(多)" />
-
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -118,28 +117,11 @@
             android:layout_height="wrap_content"
             android:layout_margin="5dp"
             android:layout_weight="1"
-            android:onClick="postReadListClick"
-            android:singleLine="true"
-            android:text="属性读(多)" />
-
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="5dp"
-            android:layout_weight="1"
             android:onClick="postWriteClick"
             android:singleLine="true"
             android:text="属性写(一)" />
 
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="5dp"
-            android:layout_weight="1"
-            android:onClick="postWriteListClick"
-            android:singleLine="true"
-            android:text="属性写(多)" />
 
     </LinearLayout>
 
@@ -157,14 +139,6 @@
             android:singleLine="true"
             android:text="通知(一)" />
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="5dp"
-            android:layout_weight="1"
-            android:onClick="postNotifyListClick"
-            android:singleLine="true"
-            android:text="通知(多)" />
 
         <Button
             android:layout_width="wrap_content"
@@ -175,14 +149,6 @@
             android:singleLine="true"
             android:text="方法(一)" />
 
-        <Button
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_margin="5dp"
-            android:layout_weight="1"
-            android:onClick="postMethodsClick"
-            android:singleLine="true"
-            android:text="方法(多)" />
     </LinearLayout>
 
     <TextView

@@ -1,18 +1,18 @@
-// JavaIMqttCallback.cpp
+// JavaIotCallback.cpp
 
-#include "JavaIMqttCallback.h"
+#include "JavaIotCallback.h"
 #include <jni.h>
 #include "BaseDataConverter.h"
 
-JavaIMqttCallback::JavaIMqttCallback()
-        : globalRef(nullptr), mid_connState(nullptr), mid_msgArrives(nullptr), mid_pushed(nullptr),
+JavaIotCallback::JavaIotCallback()
+        : globalRef(nullptr), mid_p2p_connState(nullptr), mid_iot_connState(nullptr), mid_msgArrives(nullptr), mid_pushed(nullptr),
           mid_iotReplyed(nullptr), mid_pushFail(nullptr), mid_subscribed(nullptr), mid_subscribeFail(nullptr) {}
 
-JavaIMqttCallback::~JavaIMqttCallback() {
+JavaIotCallback::~JavaIotCallback() {
 
 }
 
-void JavaIMqttCallback::set(JNIEnv* env, jobject obj) {
+void JavaIotCallback::set(JNIEnv* env, jobject obj) {
     clear(env);
     if (!obj) return;
     globalRef = env->NewGlobalRef(obj);
@@ -29,7 +29,8 @@ void JavaIMqttCallback::set(JNIEnv* env, jobject obj) {
         return;
     }
     // 获取方法ID
-    mid_connState = env->GetMethodID(cls, "connState", "(ZLjava/lang/String;)V");
+    mid_p2p_connState = env->GetMethodID(cls, "p2pConnState", "(ZLjava/lang/String;)V");
+    mid_iot_connState = env->GetMethodID(cls, "iotConnState", "(ZLjava/lang/String;)V");
     mid_msgArrives = env->GetMethodID(cls, "msgArrives", "(Lcom/library/natives/BaseData;)V");
     mid_pushed = env->GetMethodID(cls, "pushed", "(Lcom/library/natives/BaseData;)V");
     mid_iotReplyed = env->GetMethodID(cls, "iotReplyed", "(Ljava/lang/String;Ljava/lang/String;)V");
@@ -40,16 +41,16 @@ void JavaIMqttCallback::set(JNIEnv* env, jobject obj) {
     env->DeleteLocalRef(cls);
 }
 
-void JavaIMqttCallback::clear(JNIEnv* env) {
+void JavaIotCallback::clear(JNIEnv* env) {
     if (globalRef) {
         env->DeleteGlobalRef(globalRef);
         globalRef = nullptr;
     }
 
-    mid_connState = mid_msgArrives = mid_pushed = mid_iotReplyed = mid_pushFail = mid_subscribed = mid_subscribeFail = nullptr;
+    mid_p2p_connState=mid_iot_connState = mid_msgArrives = mid_pushed = mid_iotReplyed = mid_pushFail = mid_subscribed = mid_subscribeFail = nullptr;
 }
 
-JNIEnv* JavaIMqttCallback::getEnv(JavaVM* gJvm,bool& attached) {
+JNIEnv* JavaIotCallback::getEnv(JavaVM* gJvm, bool& attached) {
     attached = false;
     JNIEnv* env = nullptr;
     if (!gJvm) return nullptr;
@@ -64,7 +65,7 @@ JNIEnv* JavaIMqttCallback::getEnv(JavaVM* gJvm,bool& attached) {
 }
 
 // 回调方法实现
-void JavaIMqttCallback::callSubscribed(JavaVM* gJvm,const std::string &topic) {
+void JavaIotCallback::callSubscribed(JavaVM* gJvm, const std::string &topic) {
     if (!globalRef || !mid_subscribed) return;
     bool attached = false;
     JNIEnv* env = getEnv(gJvm,attached);
@@ -76,8 +77,8 @@ void JavaIMqttCallback::callSubscribed(JavaVM* gJvm,const std::string &topic) {
 }
 
 // 回调方法实现
-void JavaIMqttCallback::callSubscribeFail(JavaVM *gJvm, const std::string &topic,
-                                          const std::string &desc) {
+void JavaIotCallback::callSubscribeFail(JavaVM *gJvm, const std::string &topic,
+                                        const std::string &desc) {
     if (!globalRef || !mid_subscribed) return;
     bool attached = false;
     JNIEnv* env = getEnv(gJvm,attached);
@@ -90,18 +91,30 @@ void JavaIMqttCallback::callSubscribeFail(JavaVM *gJvm, const std::string &topic
 }
 
 // 回调方法实现
-void JavaIMqttCallback::callConnState(JavaVM* gJvm,bool connected, const std::string& description) {
-    if (!globalRef || !mid_connState) return;
+void JavaIotCallback::callP2pConnState(JavaVM *gJvm, bool connected, const std::string &description) {
+    if (!globalRef || !mid_p2p_connState) return;
     bool attached = false;
     JNIEnv* env = getEnv(gJvm,attached);
     if (!env) return;
     jstring jdesc = env->NewStringUTF(description.c_str());
-    env->CallVoidMethod(globalRef, mid_connState, (jboolean)connected, jdesc);
+    env->CallVoidMethod(globalRef, mid_p2p_connState, (jboolean)connected, jdesc);
     if (jdesc) env->DeleteLocalRef(jdesc);
     if (attached) gJvm->DetachCurrentThread();
 }
 
-void JavaIMqttCallback::callPushed(JavaVM* gJvm, const BaseData& baseData) {
+// 回调方法实现
+void JavaIotCallback::callIotConnState(JavaVM* gJvm, bool connected, const std::string& description) {
+    if (!globalRef || !mid_iot_connState) return;
+    bool attached = false;
+    JNIEnv* env = getEnv(gJvm,attached);
+    if (!env) return;
+    jstring jdesc = env->NewStringUTF(description.c_str());
+    env->CallVoidMethod(globalRef, mid_iot_connState, (jboolean)connected, jdesc);
+    if (jdesc) env->DeleteLocalRef(jdesc);
+    if (attached) gJvm->DetachCurrentThread();
+}
+
+void JavaIotCallback::callPushed(JavaVM* gJvm, const BaseData& baseData) {
     LOGD("callPushed调用: iPutType=%d, iid=%s", baseData.iPutType, baseData.iid.c_str());
 
     if (!globalRef || !mid_pushed){
@@ -152,7 +165,7 @@ void JavaIMqttCallback::callPushed(JavaVM* gJvm, const BaseData& baseData) {
 
 }
 
-void JavaIMqttCallback::callPushFail(JavaVM *gJvm, const BaseData &baseData,const std::string &desc) {
+void JavaIotCallback::callPushFail(JavaVM *gJvm, const BaseData &baseData, const std::string &desc) {
     LOGD("callPushed调用: iPutType=%d, iid=%s", baseData.iPutType, baseData.iid.c_str());
 
     if (!globalRef || !mid_pushed){
@@ -205,7 +218,7 @@ void JavaIMqttCallback::callPushFail(JavaVM *gJvm, const BaseData &baseData,cons
 
 }
 
-void JavaIMqttCallback::callMsgArrives(JavaVM* gJvm, const BaseData& baseData) {
+void JavaIotCallback::callMsgArrives(JavaVM* gJvm, const BaseData& baseData) {
     LOGD("callMsgArrives调用: iPutType=%d, iid=%s", baseData.iPutType, baseData.iid.c_str());
 
     if (!globalRef || !mid_msgArrives){

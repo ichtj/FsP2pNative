@@ -28,30 +28,44 @@ public class BaseXLink {
     /**
      * 连接
      * @param infomation  连接参数
-     * @param iMqttCallback 回调
+     * @param iPipelineCallback 回调
      */
-    public static native void connect(Infomation infomation,IMqttCallback iMqttCallback);
+    public static native void connect(Infomation infomation,XCoreBean coreBean,String protocol, IPipelineCallback iPipelineCallback);
+
+    /**
+     * 订阅
+     * @param infomation
+     * @return
+     */
+    public static native boolean subscribe(Infomation infomation);
+
+    /**
+     * 取消订阅
+     * @param infomation
+     * @return
+     */
+    public static native boolean unSubscribe(Infomation infomation);
 
     /**
      * 平台回复
      * @param iPutType
      * @param iid
-     * @param operation
+     * @param node
      * @param dataMap
      * @return
      */
-    public static native boolean putReply(@IPutType int iPutType, String iid, String operation, Map<String, Object> dataMap) ;
+    public static native boolean putReply(@IPutType int iPutType, String iid, String node, Map<String, Object> dataMap) ;
 
     /**
-     * 消息发布事件 属性
+     * 消息发布事件 属性 优化中... 属于fsp2p协议栈的一部分 与iot通讯无关
      * @param iPutType
      * @param targetSn
      * @param pDid
-     * @param name
+     * @param node
      * @param params
      * @return
      */
-    public static native boolean postMsg(@IPutType int iPutType,String targetSn,String pDid,String name, Map<String, Object> params);
+    public static native boolean postMsg(@IPutType int iPutType,String targetSn,String pDid,String node, Map<String, Object> params);
 
     /**
      * 断开连接

@@ -1,14 +1,20 @@
 package com.library.natives;
 
-public interface IMqttCallback {
+public interface IPipelineCallback {
     /**
-     * 连接变化
+     * p2p连接变化
      *
      * @param connected   true false
      * @param description connected 为false时描述错误信息
      */
-    void connState(boolean connected, String description);
+    void p2pConnState(boolean connected, String description);
 
+    /**
+     *
+     * @param connected
+     * @param description
+     */
+    void iotConnState(boolean connected, String description);
     /**
      * 消息到达
      *

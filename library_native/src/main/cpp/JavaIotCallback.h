@@ -7,11 +7,11 @@
 #include <memory>
 #include "BaseData.h"
 
-// JavaIMqttCallback 类声明
-class JavaIMqttCallback {
+// JavaIotCallback 类声明
+class JavaIotCallback {
 public:
-    JavaIMqttCallback();
-    ~JavaIMqttCallback();
+    JavaIotCallback();
+    ~JavaIotCallback();
 
     // 设置回调
     void set(JNIEnv* env, jobject obj);
@@ -27,7 +27,8 @@ public:
     void callMethod(jmethodID methodID, Args... args);
 
     // 各种回调方法
-    void callConnState(JavaVM* gJvm,bool connected, const std::string& description);
+    void callP2pConnState(JavaVM* gJvm,bool connected, const std::string& description);
+    void callIotConnState(JavaVM* gJvm,bool connected, const std::string& description);
     void callMsgArrives(JavaVM* gJvm,const BaseData& baseData);  // 修改为传递 C++ 类型 BaseData
     void callPushed(JavaVM* gJvm,const BaseData& baseData);  // 修改为传递 C++ 类型 BaseData
     void callIotReplyed(const std::string& act, const std::string& iid);
@@ -38,7 +39,7 @@ public:
 private:
     jobject globalRef;
     jclass baseDataClass;  // 新增：缓存BaseData类的全局引用
-    jmethodID mid_connState, mid_msgArrives, mid_pushed, mid_iotReplyed, mid_pushFail, mid_subscribed, mid_subscribeFail;
+    jmethodID mid_p2p_connState,mid_iot_connState, mid_msgArrives, mid_pushed, mid_iotReplyed, mid_pushFail, mid_subscribed, mid_subscribeFail;
 
     // 转换 C++ BaseData 到 Java BaseData
     jobject toJavaBaseData(JNIEnv* env, const BaseData& baseData);
