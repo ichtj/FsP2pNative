@@ -6,17 +6,23 @@
 
 class PutTypeTool {
 public:
-    static int METHOD(JNIEnv *env);
-    static int UPLOAD(JNIEnv *env);
-    static int EVENT(JNIEnv *env);
-    static int UPGRADE(JNIEnv *env);
-    static int SETPERTIES(JNIEnv *env);
-    static int GETPERTIES(JNIEnv *env);
-    static int BROADCAST(JNIEnv *env);
+    static void init(JavaVM* vm);
+    static void release(JNIEnv* env);
+
+    static int METHOD();
+    static int UPLOAD();
+    static int EVENT();
+    static int UPGRADE();
+    static int SETPERTIES();
+    static int GETPERTIES();
+    static int BROADCAST();
 
 private:
-    static jclass getClass(JNIEnv *env);
-    static int getStaticInt(JNIEnv *env, const char *fieldName);
+    static JavaVM* gJvm;
+    static jclass putTypeClass;
+
+    static JNIEnv* getEnv(bool& attached);
+    static int getStaticInt(const char* fieldName);
 };
 
 #endif // PUT_TYPE_TOOL_H

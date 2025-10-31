@@ -308,32 +308,32 @@ std::string iTools::jstrToStd(JNIEnv* env, jstring s) {
     return out;
 }
 
-int iTools::convertToRequestAction(JNIEnv* env,int action) {
-    if (action==PutTypeTool::METHOD(env)){
+int iTools::convertToRequestAction(int action) {
+    if (action==PutTypeTool::METHOD()){
         return fs::p2p::Request::Action::Action_Method;
-    }else if(action==PutTypeTool::EVENT(env)){
+    }else if(action==PutTypeTool::EVENT()){
         return fs::p2p::Request::Action::Action_Event;
-    }else if(action==PutTypeTool::SETPERTIES(env)){
+    }else if(action==PutTypeTool::SETPERTIES()){
         return fs::p2p::Request::Action::Action_Write;
-    }else if(action==PutTypeTool::GETPERTIES(env)){
+    }else if(action==PutTypeTool::GETPERTIES()){
         return fs::p2p::Request::Action::Action_Read;
-    }else if(action==PutTypeTool::BROADCAST(env)){
+    }else if(action==PutTypeTool::BROADCAST()){
         return fs::p2p::Request::Action::Action_Broadcast;
-    }else if(action==PutTypeTool::UPLOAD(env)){
+    }else if(action==PutTypeTool::UPLOAD()){
         return fs::p2p::Request::Action::Action_Notify;
     }else {
         return action;
     }
 }
 
-int iTools::convertToResponseAction(JNIEnv* env,int action) {
-    if (action==PutTypeTool::METHOD(env)){
+int iTools::convertToResponseAction(int action) {
+    if (action==PutTypeTool::METHOD()){
         return fs::p2p::Response::Action::Action_Method;
-    }else if(action==PutTypeTool::EVENT(env)){
+    }else if(action==PutTypeTool::EVENT()){
         return fs::p2p::Response::Action::Action_Event;
-    }else if(action==PutTypeTool::SETPERTIES(env)){
+    }else if(action==PutTypeTool::SETPERTIES()){
         return fs::p2p::Response::Action::Action_Write;
-    }else if(action==PutTypeTool::GETPERTIES(env)){
+    }else if(action==PutTypeTool::GETPERTIES()){
         return fs::p2p::Response::Action::Action_Read;
     }else {
         return action;

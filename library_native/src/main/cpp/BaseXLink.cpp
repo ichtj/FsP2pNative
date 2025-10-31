@@ -95,6 +95,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
         g_i_mqtt_callback.callIotConnState(gJvm,true,"Connected");
         return;
     }
+    PutTypeTool::init(gJvm);
     g_i_mqtt_callback.set(env, i_pipeline_callback);
     jclass xCoreBeanCls = env->GetObjectClass(xCoreBean);
     jmethodID mid_getHost = env->GetMethodID(xCoreBeanCls, "getHost", "()Ljava/lang/String;");
@@ -229,7 +230,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
             for (const auto& method : device.methods) {
                 for (const auto& param_pair : method.params) {
                 }
-                BaseData baseData={PutTypeTool::METHOD(env),req.iid,method.name, method.params};
+                BaseData baseData={PutTypeTool::METHOD(),req.iid,method.name, method.params};
                 g_i_mqtt_callback.callMsgArrives(gJvm,baseData);
             }
         });
@@ -239,7 +240,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
             // --- 遍历 Services ---
             for (const auto& service : device.services) {
                 for (const auto& prop_pair : service.propertys) {
-                    BaseData baseData={PutTypeTool::GETPERTIES(env),req.iid,service.name/*+"-"+prop_pair.first*/, service.propertys};
+                    BaseData baseData={PutTypeTool::GETPERTIES(),req.iid,service.name/*+"-"+prop_pair.first*/, service.propertys};
                     g_i_mqtt_callback.callMsgArrives(gJvm,baseData);
                 }
             }
@@ -250,7 +251,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
             // --- 遍历 Services ---
             for (const auto& service : device.services) {
                 for (const auto& prop_pair : service.propertys) {//network-net_type
-                    BaseData baseData={PutTypeTool::SETPERTIES(env),req.iid,service.name/*+"-"+prop_pair.first*/, service.propertys};
+                    BaseData baseData={PutTypeTool::SETPERTIES(),req.iid,service.name/*+"-"+prop_pair.first*/, service.propertys};
                     g_i_mqtt_callback.callMsgArrives(gJvm,baseData);
                 }
             }
@@ -271,7 +272,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
                     g_i_mqtt_callback.callIotConnState(gJvm, true,description);
                     iot_connect_state_value= 1;
                 }else{
-                    BaseData baseData={PutTypeTool::EVENT(env),req.iid,event.name, event.params};
+                    BaseData baseData={PutTypeTool::EVENT(),req.iid,event.name, event.params};
                     g_i_mqtt_callback.callMsgArrives(gJvm,baseData);
                 }
             }
@@ -435,7 +436,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_putIotReply
                 fs::p2p::Payload::Device& device = device_pair.second;
                 LOGD( "putCmd device_sn=%s", device_sn.c_str());
 
-                int cppAction=iTools::convertToResponseAction(env,i_put_type);
+                int cppAction=iTools::convertToResponseAction(i_put_type);
 
                 if (cppAction==fs::p2p::Response::Action::Action_Method){
                     LOGD( "putCmd Action_Method iid=%s", r.iid.c_str());
@@ -499,7 +500,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
     fs::p2p::Payload::Device fdevice;
     fdevice.sn = targetSnStr;
     fdevice.product_id = pdidStr;
-    int cppAction=iTools::convertToRequestAction(env,i_put_type);
+    int cppAction=iTools::convertToRequestAction(i_put_type);
     std::string iid;
 
     BaseData baseData;

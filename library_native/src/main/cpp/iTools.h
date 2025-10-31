@@ -32,8 +32,8 @@ public:
     static std::string jstrToStd(JNIEnv* env, jstring s);
 
     // ---------- Action 转换 ----------
-    static int convertToRequestAction(JNIEnv* env,int action);
-    static int convertToResponseAction(JNIEnv* env,int action);
+    static int convertToRequestAction(int action);
+    static int convertToResponseAction(int action);
 
     // ---------- Method / Event / Service ----------
     static fs::p2p::Method convertToMethod(JNIEnv* env, jstring jname, jobject jparams, jint jreason_code, jstring jreason_string);

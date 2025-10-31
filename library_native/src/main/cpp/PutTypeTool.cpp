@@ -1,52 +1,88 @@
 #include "PutTypeTool.h"
 #include <iostream>
 
-static const char *PUT_TYPE_CLASS_PATH = "com/library/natives/PutType";
+JavaVM* PutTypeTool::gJvm = nullptr;
+jclass PutTypeTool::putTypeClass = nullptr;
 
-jclass PutTypeTool::getClass(JNIEnv *env) {
-    jclass cls = env->FindClass(PUT_TYPE_CLASS_PATH);
-    if (!cls) {
-        std::cerr << "PutType class not found: " << PUT_TYPE_CLASS_PATH << std::endl;
+void PutTypeTool::init(JavaVM* vm) {
+    gJvm = vm;
+    if (!vm) return;
+
+    bool attached = false;
+    JNIEnv* env = getEnv(attached);
+    if (!env) return;
+
+    jclass localClass = env->FindClass("com/library/natives/PutType");
+    if (!localClass) {
+        std::cerr << "❌ 找不到 com/library/natives/PutType 类" << std::endl;
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+        if (attached) gJvm->DetachCurrentThread();
+        return;
     }
-    return cls;
+
+    putTypeClass = (jclass)env->NewGlobalRef(localClass);
+    env->DeleteLocalRef(localClass);
+
+    if (attached) gJvm->DetachCurrentThread();
+
+    std::cout << "✅ PutTypeTool 初始化成功" << std::endl;
 }
 
-int PutTypeTool::getStaticInt(JNIEnv *env, const char *fieldName) {
-    jclass cls = getClass(env);
-    if (!cls) return 0;
+void PutTypeTool::release(JNIEnv* env) {
+    if (putTypeClass && env) {
+        env->DeleteGlobalRef(putTypeClass);
+        putTypeClass = nullptr;
+    }
+}
 
-    jfieldID fid = env->GetStaticFieldID(cls, fieldName, "I");
-    if (!fid) {
-        std::cerr << "PutType field not found: " << fieldName << std::endl;
+JNIEnv* PutTypeTool::getEnv(bool& attached) {
+    attached = false;
+    if (!gJvm) return nullptr;
+    JNIEnv* env = nullptr;
+
+    if (gJvm->GetEnv((void**)&env, JNI_VERSION_1_6) != JNI_OK) {
+        if (gJvm->AttachCurrentThread(&env, nullptr) == JNI_OK) {
+            attached = true;
+        } else {
+            return nullptr;
+        }
+    }
+    return env;
+}
+
+int PutTypeTool::getStaticInt(const char* fieldName) {
+    if (!putTypeClass || !gJvm) {
+        std::cerr << "❌ PutTypeTool 未初始化 (putTypeClass 或 gJvm 为空)" << std::endl;
         return 0;
     }
-    return env->GetStaticIntField(cls, fid);
+
+    bool attached = false;
+    JNIEnv* env = getEnv(attached);
+    if (!env) return 0;
+
+    jfieldID fid = env->GetStaticFieldID(putTypeClass, fieldName, "I");
+    if (!fid) {
+        std::cerr << "❌ 找不到字段: " << fieldName << std::endl;
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+        if (attached) gJvm->DetachCurrentThread();
+        return 0;
+    }
+
+    jint value = env->GetStaticIntField(putTypeClass, fid);
+    if (attached) gJvm->DetachCurrentThread();
+    return value;
 }
 
-int PutTypeTool::METHOD(JNIEnv *env) {
-    return getStaticInt(env, "METHOD");
-}
-
-int PutTypeTool::UPLOAD(JNIEnv *env) {
-    return getStaticInt(env, "UPLOAD");
-}
-
-int PutTypeTool::EVENT(JNIEnv *env) {
-    return getStaticInt(env, "EVENT");
-}
-
-int PutTypeTool::UPGRADE(JNIEnv *env) {
-    return getStaticInt(env, "UPGRADE");
-}
-
-int PutTypeTool::SETPERTIES(JNIEnv *env) {
-    return getStaticInt(env, "SETPERTIES");
-}
-
-int PutTypeTool::GETPERTIES(JNIEnv *env) {
-    return getStaticInt(env, "GETPERTIES");
-}
-
-int PutTypeTool::BROADCAST(JNIEnv *env) {
-    return getStaticInt(env, "BROADCAST");
-}
+int PutTypeTool::METHOD()     { return getStaticInt("METHOD"); }
+int PutTypeTool::UPLOAD()     { return getStaticInt("UPLOAD"); }
+int PutTypeTool::EVENT()      { return getStaticInt("EVENT"); }
+int PutTypeTool::UPGRADE()    { return getStaticInt("UPGRADE"); }
+int PutTypeTool::SETPERTIES() { return getStaticInt("SETPERTIES"); }
+int PutTypeTool::GETPERTIES() { return getStaticInt("GETPERTIES"); }
+int PutTypeTool::BROADCAST()  { return getStaticInt("BROADCAST"); }
