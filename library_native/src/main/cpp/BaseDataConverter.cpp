@@ -1,6 +1,6 @@
 // ========== BaseDataConverter.cpp ==========
 #include "BaseDataConverter.h"
-#include "JavaIotCallback.h"
+#include "PipelineCallback.h"
 #include "BaseData.h"
 
 // 递归转换 ordered_json 到 Java Object

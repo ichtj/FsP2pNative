@@ -18,11 +18,15 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE    := BaseXLink
 LOCAL_SRC_FILES += BaseXLink.cpp \
-                   JavaIotCallback.cpp \
+                   PipelineCallback.cpp \
                    BaseDataConverter.cpp \
                    Timer.cpp \
                    RequestManager.cpp \
-                   Logger.cpp
+                   Logger.cpp \
+                   SubscribeInfomation.cpp \
+                   IInfomationsCallback.cpp \
+                   iTools.cpp \
+                   PutTypeTool.cpp
 # 添加 C++ 标志和链接库
 LOCAL_CPPFLAGS := -std=c++14
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include

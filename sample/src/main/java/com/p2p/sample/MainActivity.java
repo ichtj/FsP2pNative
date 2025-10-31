@@ -15,6 +15,7 @@ import android.widget.TextView;
 
 import com.library.natives.BaseData;
 import com.library.natives.BaseFsP2pTools;
+import com.library.natives.IInfomationsCallback;
 import com.library.natives.IPipelineCallback;
 import com.library.natives.Infomation;
 import com.library.natives.PutType;
@@ -102,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
                         maps.put (key,value);
                     }
                 }
-                BaseFsP2pTools.putReply (baseData.iPutType,baseData.iid,baseData.operation, maps);
+                BaseFsP2pTools.putIotReply (baseData.iPutType,baseData.iid,baseData.operation, maps);
             }
 
             @Override
@@ -195,6 +196,18 @@ public class MainActivity extends AppCompatActivity {
         btnPrintLog.setText(isEnable ? "日志:开" : "日志:关");
     }
 
+    public void getInfomationsClick(View view) {
+        Map<String, Object> out = new HashMap<>();
+        out.put("fileName", "update.zip");
+        out.put("percent", "1%");
+        BaseFsP2pTools.getInfomationList (new IInfomationsCallback ( ) {
+            @Override
+            public void deivces(List<Infomation> infomations) {
+                handler.sendMessage(handler.obtainMessage(0x00, "getInfomationsClick：infomations>"+infomations));
+            }
+        });
+    }
+
     public void postEventClick(View view) {
         Map<String, Object> out = new HashMap<>();
         out.put("fileName", "update.zip");
@@ -227,8 +240,9 @@ public class MainActivity extends AppCompatActivity {
 
     public void postMethodClick(View view) {
         Map<String, Object> out = new HashMap<>();
-        out.put("cmd", "ls -l");
-        boolean isComplete= BaseFsP2pTools.postMsg (PutType.UPLOAD,"WN1241222","22122a20-5ea8-40ef-b7d2-329ee4207474","remote_cmd",out);
+        out.put("sn", "");
+        out.put("product_id", "");
+        boolean isComplete= BaseFsP2pTools.postMsg (PutType.METHOD,"FSCOREaedff2dc03dc-FSM-ff0981","173206b4-7235-454f-ad51-0604dd9ef8a8","gw_node_list",out);
         handler.sendMessage(handler.obtainMessage(0x00, "postMethodClick：isComplete>"+isComplete));
     }
 }

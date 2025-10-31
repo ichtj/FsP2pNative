@@ -8,7 +8,5 @@ public class PutType {
     public static final int SETPERTIES=0x104;
     public static final int GETPERTIES=0x105;
     public static final int BROADCAST=0x106;
-/*
-    public static final int NOTIFY=0x107;
-*/
+
 }

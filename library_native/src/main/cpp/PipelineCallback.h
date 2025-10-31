@@ -7,11 +7,11 @@
 #include <memory>
 #include "BaseData.h"
 
-// JavaIotCallback 类声明
-class JavaIotCallback {
+// PipelineCallback 类声明
+class PipelineCallback {
 public:
-    JavaIotCallback();
-    ~JavaIotCallback();
+    PipelineCallback();
+    ~PipelineCallback();
 
     // 设置回调
     void set(JNIEnv* env, jobject obj);

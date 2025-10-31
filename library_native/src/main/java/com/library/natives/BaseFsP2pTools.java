@@ -1,5 +1,6 @@
 package com.library.natives;
 
+import java.util.List;
 import java.util.Map;
 
 public class BaseFsP2pTools {
@@ -33,6 +34,12 @@ public class BaseFsP2pTools {
     public static native void connect(Infomation infomation,XCoreBean coreBean,String protocol, IPipelineCallback iPipelineCallback);
 
     /**
+     * 获取所有信息设备
+     * @return
+     */
+    public static native void getInfomationList(IInfomationsCallback icallback);
+
+    /**
      * 订阅
      * @param infomation
      * @return
@@ -47,17 +54,17 @@ public class BaseFsP2pTools {
     public static native boolean unSubscribe(Infomation infomation);
 
     /**
-     * 平台回复
+     * iot平台回复
      * @param iPutType
      * @param iid
      * @param node
      * @param dataMap
      * @return
      */
-    public static native boolean putReply(@IPutType int iPutType, String iid, String node, Map<String, Object> dataMap) ;
+    public static native boolean putIotReply(@IPutType int iPutType, String iid, String node, Map<String, Object> dataMap) ;
 
     /**
-     * 消息发布事件 属性 优化中... 属于fsp2p协议栈的一部分 与iot通讯无关
+     * 向管道发送发布事件 属性等 属于fsp2p协议栈的一部分  这里只代理iot平台相关的:事件 属性上报
      * @param iPutType
      * @param targetSn
      * @param pDid
