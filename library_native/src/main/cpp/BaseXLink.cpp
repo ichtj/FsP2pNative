@@ -174,7 +174,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
                 for (const auto& method : device.methods) {
                     for (const auto& param_pair : method.params) {
                     }
-//                    LOGD( "setBroadcastCallback:method device_sn=%s , methodName=%s",device_sn.c_str(),method.name.c_str());
+                    LOGD( "setBroadcastCallback:method device_sn=%s , methodName=%s",device_sn.c_str(),method.name.c_str());
                     if (method.name=="iot_connect_state"){
                         xcore_manifest.sn = device_sn;
                         xcore_manifest.product_id = device.product_id;
@@ -415,12 +415,14 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_subscribe
 }
 
 JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_putIotReply
-        (JNIEnv* env, jclass, jint i_put_type, jstring iid, jstring operation, jobject data_map )
+        (JNIEnv* env, jclass, jint i_put_type, jstring iid, jstring operation, jobject data_map,
+         jint status_code, jstring status_desc)
 {
     if (iot_connect_state_value!=1){
-        iTools::deleteLocalRefs(env,iid,operation,data_map);
+        iTools::deleteLocalRefs(env,iid,operation,data_map,status_desc);
         return false;
     }
+    bool isComplete= false;
     BaseData baseData;
     baseData.iPutType=i_put_type;
     baseData.iid=iTools::jstrToStd(env, iid);
@@ -444,9 +446,12 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_putIotReply
                     for (auto& read : device.methods) {
                         std::map<std::string, ordered_json> newMaps = iTools::javaMapToCppMapValue(env, data_map);
                         read.params = newMaps;
+                        read.reason_code=status_code;
+                        read.reason_string=iTools::jstrToStd(env, status_desc);
                     }
                     int result=s_mp->response(r,res_device_list);
-                    if (result==0){
+                    isComplete=result==0;
+                    if (isComplete){
                         g_i_mqtt_callback.callPushed(gJvm,baseData);
                     }else{
                         g_i_mqtt_callback.callPushFail(gJvm,baseData,"putCmd failed");
@@ -457,21 +462,28 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_putIotReply
                     for (auto& read : device.services) {
                         std::map<std::string, ordered_json> newMaps = iTools::javaMapToCppMapValue(env, data_map);
                         read.propertys = newMaps;
+                        read.reason_code=status_code;
+                        read.reason_string=iTools::jstrToStd(env, status_desc);
                     }
                     int result=s_mp->response(r,res_device_list);
-                    if (result==0){
+                    isComplete=result==0;
+                    if (isComplete){
                         g_i_mqtt_callback.callPushed(gJvm,baseData);
                     }else{
                         g_i_mqtt_callback.callPushFail(gJvm,baseData,"putCmd failed");
-                    }                }else if(cppAction==fs::p2p::Response::Action::Action_Write){
+                    }
+                }else if(cppAction==fs::p2p::Response::Action::Action_Write){
                     LOGD( "putCmd Action_Method iid=%s", r.iid.c_str());
                     // --- 遍历 Methods ---
                     for (auto& write : device.services) {
                         std::map<std::string, ordered_json> newMaps = iTools::javaMapToCppMapValue(env, data_map);
                         write.propertys = newMaps;
+                        write.reason_code=status_code;
+                        write.reason_string=iTools::jstrToStd(env, status_desc);
                     }
                     int result=s_mp->response(r,res_device_list);
-                    if (result==0){
+                    isComplete=result==0;
+                    if (isComplete){
                         g_i_mqtt_callback.callPushed(gJvm,baseData);
                     }else{
                         g_i_mqtt_callback.callPushFail(gJvm,baseData,"putCmd failed");
@@ -481,18 +493,16 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_putIotReply
 
                 }
             }
-            return JNI_TRUE;
         }
     }
+    iTools::deleteLocalRefs(env,iid,operation,data_map,status_desc);
+    return isComplete;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
         (JNIEnv* env, jclass, jint i_put_type , jstring target_sn, jstring p_did , jstring jnode, jobject jparams )
 {
-//    if (!isSubscribed(getInfomationDevsList(), jstrToStd(env, target_sn))){
-//        deleteLocalRefs(env,target_sn,p_did,jnode,jparams);
-//        return false;
-//    }
+    bool isComplete= false;
     std::string targetSnStr = iTools::jstrToStd(env, target_sn);
     std::string pdidStr = iTools::jstrToStd(env, p_did);
     jstring jreason_str = env->NewStringUTF("");
@@ -516,7 +526,8 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
                                    [](const fs::p2p::Response &res, void *){
                                        LOGD("postMethod>>iid>>%s,action>>%d",res.iid.c_str(),res.action);
                 }, NULL,"");
-            if(!iid.empty()){
+            isComplete=!iid.empty();
+            if(isComplete){
                 g_i_mqtt_callback.callPushed(gJvm,baseData);
             }else{
                 g_i_mqtt_callback.callPushFail(gJvm,baseData,"postMethod failed");
@@ -531,7 +542,8 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
             iid = s_mp->postRead(list,[](const fs::p2p::Response &res, void *)
             {}, NULL,"");
             baseData.iid=iid;
-            if(!iid.empty()){
+            isComplete=!iid.empty();
+            if(isComplete){
                 g_i_mqtt_callback.callPushed(gJvm,baseData);
             }else{
                 g_i_mqtt_callback.callPushFail(gJvm,baseData,"postRead failed");
@@ -546,7 +558,8 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
             iid = s_mp->postWrite(list,[](const fs::p2p::Response &res, void *)
             {}, NULL,"");
             baseData.iid=iid;
-            if(!iid.empty()){
+            isComplete=!iid.empty();
+            if(isComplete){
                 g_i_mqtt_callback.callPushed(gJvm,baseData);
             }else{
                 g_i_mqtt_callback.callPushFail(gJvm,baseData,"postWrite failed");
@@ -561,7 +574,8 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
             iid = s_mp->postEvent(list,[](const fs::p2p::Response &res, void *)
             {}, NULL);
             baseData.iid=iid;
-            if(!iid.empty()){
+            isComplete=!iid.empty();
+            if(isComplete){
                 g_i_mqtt_callback.callPushed(gJvm,baseData);
             }else{
                 g_i_mqtt_callback.callPushFail(gJvm,baseData,"postEvent failed");
@@ -575,7 +589,8 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
         if (s_mp) {
             iid = s_mp->postNotify(list);
             baseData.iid=iid;
-            if(!iid.empty()){
+            isComplete=!iid.empty();
+            if(isComplete){
                 g_i_mqtt_callback.callPushed(gJvm,baseData);
             }else{
                 g_i_mqtt_callback.callPushFail(gJvm,baseData,"postNotify failed");
@@ -588,7 +603,8 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
         if (s_mp) {
             iid = s_mp->postBroadcast(list);
             baseData.iid=iid;
-            if(!iid.empty()){
+            isComplete=!iid.empty();
+            if(isComplete){
                 g_i_mqtt_callback.callPushed(gJvm,baseData);
             }else{
                 g_i_mqtt_callback.callPushFail(gJvm,baseData,"postBroadcast failed");
@@ -596,7 +612,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_postMsg
         }
     }
     iTools::deleteLocalRefs(env,jreason_str,target_sn,p_did,jnode,jparams);
-    return !iid.empty();
+    return isComplete;
 }
 
 JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_disConnect

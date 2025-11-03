@@ -61,7 +61,19 @@ public class BaseFsP2pTools {
      * @param dataMap
      * @return
      */
-    public static native boolean putIotReply(@IPutType int iPutType, String iid, String node, Map<String, Object> dataMap) ;
+    public static boolean putIotReply(@IPutType int iPutType, String iid, String node, Map<String, Object> dataMap) {
+        return putIotReply (iPutType, iid, node, dataMap,0,"");
+    }
+
+    /**
+     * iot平台回复
+     * @param iPutType
+     * @param iid
+     * @param node
+     * @param dataMap
+     * @return
+     */
+    public static native boolean putIotReply(@IPutType int iPutType, String iid, String node, Map<String, Object> dataMap,int statusCode,String statusDesc);
 
     /**
      * 向管道发送发布事件 属性等 属于fsp2p协议栈的一部分  这里只代理iot平台相关的:事件 属性上报
