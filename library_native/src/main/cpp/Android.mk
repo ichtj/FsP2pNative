@@ -26,7 +26,8 @@ LOCAL_SRC_FILES += BaseXLink.cpp \
                    SubscribeInfomation.cpp \
                    IInfomationsCallback.cpp \
                    iTools.cpp \
-                   PutTypeTool.cpp
+                   PutTypeTool.cpp \
+                   iBlackCallback.cpp
 # 添加 C++ 标志和链接库
 LOCAL_CPPFLAGS := -std=c++14
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include

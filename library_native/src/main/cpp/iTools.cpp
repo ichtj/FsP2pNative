@@ -3,10 +3,26 @@
 #include <android/log.h>
 #include "PutTypeTool.h"
 
-#define LOG_TAG "iTools"
-#define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+/**
+ * 将 Java String[] 转为 nlohmann::json 数组
+ * @param env JNI 环境
+ * @param stringArray Java String[]
+ * @return json 对象，例如 ["a","b","c"]
+ */
+json convertJavaStringArrayToJson(JNIEnv* env, jobjectArray stringArray) {
+    jsize length = env->GetArrayLength(stringArray);
+    json jsonArray = json::array();
 
+    for (jsize i = 0; i < length; ++i) {
+        jstring jstr = (jstring) env->GetObjectArrayElement(stringArray, i);
+        const char* cstr = env->GetStringUTFChars(jstr, nullptr);
+        jsonArray.push_back(std::string(cstr));   // 加入 JSON 数组
+        env->ReleaseStringUTFChars(jstr, cstr);
+        env->DeleteLocalRef(jstr);
+    }
+
+    return jsonArray;
+}
 // ================== InfomationManifest ==================
 
 fs::p2p::InfomationManifest iTools::convertToCppInfomation(JNIEnv* env, jobject information) {
@@ -280,6 +296,31 @@ std::string iTools::getValue(const std::map<std::string, ordered_json>& m, const
         if (v.is_null()) return "null";
         return v.dump();
     } catch (...) { return defaultValue; }
+}
+
+std::vector<std::string> iTools::getStringVector(
+        const std::map<std::string, ordered_json>& m,
+        const std::string& key,
+        const std::vector<std::string>& defaultValue) {
+
+    auto it = m.find(key);
+    if (it == m.end()) return defaultValue;
+
+    try {
+        const auto& v = it->second;
+        if (!v.is_array()) {
+            if (v.is_string()) return {v.get<std::string>()};
+            return defaultValue;
+        }
+
+        std::vector<std::string> result;
+        for (const auto& item : v) {
+            result.push_back(item.is_string() ? item.get<std::string>() : item.dump());
+        }
+        return result;
+    } catch (...) {
+        return defaultValue;
+    }
 }
 
 std::vector<std::string> iTools::splitJString(JNIEnv* env, jstring jname) {

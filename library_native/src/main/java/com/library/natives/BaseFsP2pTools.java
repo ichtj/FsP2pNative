@@ -40,6 +40,19 @@ public class BaseFsP2pTools {
     public static native void getInfomationList(IInfomationsCallback icallback);
 
     /**
+     * 获取黑名单设备
+     * @return
+     */
+    public static native void getBlackList(IBlackCallback iBlackCallback);
+
+    /**
+     * 设置黑名单设备
+     * @param in 参数 devices_array {"",""} model_array {"",""} desc ""
+     * @return
+     */
+    public static native boolean setBlackList(Map<String,Object> in);
+
+    /**
      * 订阅
      * @param infomation
      * @return
@@ -55,25 +68,27 @@ public class BaseFsP2pTools {
 
     /**
      * iot平台回复
-     * @param iPutType
-     * @param iid
-     * @param node
-     * @param dataMap
+     * @param iPutType 类型
+     * @param iid 唯一标识
+     * @param node 节点
+     * @param out 参数
      * @return
      */
-    public static boolean putIotReply(@IPutType int iPutType, String iid, String node, Map<String, Object> dataMap) {
-        return putIotReply (iPutType, iid, node, dataMap,0,"");
+    public static boolean putIotReply(@IPutType int iPutType, String iid, String node, Map<String, Object> out) {
+        return putIotReply (iPutType, iid, node, out,0,"");
     }
 
     /**
      * iot平台回复
-     * @param iPutType
-     * @param iid
-     * @param node
-     * @param dataMap
+     * @param iPutType 类型
+     * @param iid 唯一标识
+     * @param node 节点
+     * @param out 参数
+     * @param statusCode 0表示成功 非0表示失败
+     * @param statusDesc 失败描述
      * @return
      */
-    public static native boolean putIotReply(@IPutType int iPutType, String iid, String node, Map<String, Object> dataMap,int statusCode,String statusDesc);
+    public static native boolean putIotReply(@IPutType int iPutType, String iid, String node, Map<String, Object> out,int statusCode,String statusDesc);
 
     /**
      * 向管道发送发布事件 属性等 属于fsp2p协议栈的一部分  这里只代理iot平台相关的:事件 属性上报

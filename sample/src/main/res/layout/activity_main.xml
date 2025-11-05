@@ -156,6 +156,22 @@
             android:onClick="postMethodClick"
             android:singleLine="true"
             android:text="方法(一)" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="setIotBlacklistClick"
+            android:singleLine="true"
+            android:text="设置iot黑名单" />
+        <Button
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="5dp"
+            android:layout_weight="1"
+            android:onClick="getIotBlacklistClick"
+            android:singleLine="true"
+            android:text="获取iot黑名单" />
 
     </LinearLayout>
 

@@ -16,6 +16,7 @@ using ordered_json = nlohmann::ordered_json;
 class iTools {
 public:
     // ---------- InfomationManifest ----------
+    static json convertJavaStringArrayToJson(JNIEnv* env, jobjectArray stringArray);
     static fs::p2p::InfomationManifest convertToCppInfomation(JNIEnv* env, jobject information);
     static jobject convertToJavaInfomationList(JNIEnv* env, const std::vector<fs::p2p::InfomationManifest>& deviceList);
 
@@ -28,6 +29,10 @@ public:
     // ---------- 工具函数 ----------
     static void fillJsonMap(JNIEnv* env, jobject jparams, std::map<std::string, ordered_json>& targetMap);
     static std::string getValue(const std::map<std::string, ordered_json>& m, const std::string& key, const std::string& defaultValue = "");
+    static std::vector<std::string> getStringVector(
+            const std::map<std::string, ordered_json>& m,
+            const std::string& key,
+            const std::vector<std::string>& defaultValue = {});
     static std::vector<std::string> splitJString(JNIEnv* env, jstring jname);
     static std::string jstrToStd(JNIEnv* env, jstring s);
 

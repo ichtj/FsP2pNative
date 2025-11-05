@@ -8,10 +8,11 @@
 #include "RequestManager.h"
 #include "iTools.h"
 #include "Logger.h"
-//#include "ConvertTools.h"
+//#include "BlackBeanConverter.h"
 #include "SubscribeInfomation.h"
 #include "IInfomationsCallback.h"
 #include "PutTypeTool.h"
+#include "IBlackCallback.h"
 
 static std::unique_ptr<fs::p2p::MessagePipeline> s_mp;
 static std::mutex s_mp_mutex;
@@ -21,40 +22,9 @@ static bool isP2pConnect = false;
 static bool isIotSubscribed = false;
 PipelineCallback g_i_mqtt_callback;
 IInfomationsCallback infomationsCallback;
+static IBlackCallback* iblackcall = nullptr;
 static fs::p2p::InfomationManifest xcore_manifest;
 JavaVM* gJvm = nullptr;
-
-
-const fs::p2p::InfomationManifest* foundDeviceSingle(const std::vector<fs::p2p::InfomationManifest> &devicesList,const std::string &sn){
-    for (const auto &device : devicesList) {
-        if (device.sn == sn) {
-            return &device; // 返回地址，避免拷贝
-        }
-    }
-    return nullptr;
-}
-
-bool isSubscribed(const std::vector<fs::p2p::InfomationManifest> &devicesList,const std::string &sn){
-    if (!isP2pConnect){
-        return false;
-    }
-    bool isDeviceFound= false;
-    bool isSubscribeFound= false;
-    for (const auto &device : devicesList) {
-        if (device.sn == sn) {
-            isDeviceFound= true; // 找到了匹配 SN 的设备
-            break;
-        }
-    }
-    std::vector<fs::p2p::InfomationManifest> subscribeDevList= SubscribeInfomation::getInstance().getAllManifests();
-    for (const auto &device : subscribeDevList) {
-        if (device.model == "xcore") {
-            isSubscribeFound= true; // 找到了匹配 SN 的设备
-            break;
-        }
-    }
-    return isDeviceFound && isSubscribeFound && SubscribeInfomation::getInstance().getManifest(sn); // 没找到
-}
 
 
 jint JNI_OnLoad(JavaVM* vm, void*) {
@@ -141,7 +111,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
             LOGD("setConnectStateCallback isConnected=%d",isConnected);
         });
         s_mp->setDeviceHeartbeatCallback([protocol](const fs::p2p::InfomationManifest &info) {
-            //todo ichtj
+            LOGD("setDeviceHeartbeatCallback>>%s", info.model.c_str());
         });
         s_mp->setDeviceStartupCallback([](const fs::p2p::InfomationManifest &info) {
             // xcore是云边同步的模型名称，需要往这里注入物模型，使product_id和物模型绑定
@@ -222,7 +192,9 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
                 }
             }
         });
-
+        s_mp->setLogCallback([](int level, const std::string &str){
+            LOGD( "MessagePipeline Log Level: %d, Message: %s", level, str.c_str());
+        });
         s_mp->setIncomingMethodCallback([env](const fs::p2p::Request &req, const fs::p2p::Payload::Device &device) {
             RequestManager::getInstance().addRequest(req);
             LOGD( "setRequestCallback Action_Method iid=%s", req.iid.c_str());
@@ -281,39 +253,84 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
     iTools::deleteLocalRefs(env,jhost,juser,jpass,jProtocol,xCoreBeanCls);
 }
 
-JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_getInfomationList
-        (JNIEnv* env, jclass, jobject icallback) {
-    infomationsCallback.set(env,icallback);
+bool getInfomationListCallback(std::string action,std::map<std::string, ordered_json> params){
     std::string iid = s_mp->postMethod({{xcore_manifest.sn, {
                                                xcore_manifest.sn,
                                                xcore_manifest.product_id,
                                                {}, // services
-                                               {{"fsp2p_devices",{}}}, // methods
+                                               {{action,params}}, // methods
                                                {} // events
                                        }}
                                        },
-                                       [](const fs::p2p::Response &res, void *){
+                                       [action](const fs::p2p::Response &res, void *){
                                            LOGD("getInfomationDevsList>>iid>>%s,action>>%d",res.iid.c_str(),res.action);
                                            std::map<std::string, fs::p2p::Payload::Device> res_device_list=res.payload.devices;
+                                           if (action=="fsp2p_devices"){
+                                               std::vector<fs::p2p::InfomationManifest> infos;
+                                               for (auto& device_pair : res_device_list) {
+                                                   std::string device_sn = device_pair.first;
+                                                   fs::p2p::Payload::Device& device = device_pair.second;
+                                                   std::string pdid=device.product_id;
+                                                   LOGD("getInfomationDevsList>>device_sn>>%s",device_sn.c_str());
+                                                   fs::p2p::InfomationManifest infomationManifest;
+                                                   infomationManifest.sn=device_sn;
+                                                   infomationManifest.product_id=pdid;
+                                                   infomationManifest.name="000";
+                                                   infomationManifest.model="0";
+                                                   infomationManifest.type=fs::p2p::InfomationManifest::Type::Unknown;
+                                                   infomationManifest.version=1;
+                                                   infos.push_back(infomationManifest);
+                                               }
+                                               infomationsCallback.callDevices(gJvm,infos);
+                                           }else if (action=="get_iot_blacklist"){
+                                               std::vector<BlackBean> beanList;
+                                               for (auto& device_pair : res_device_list) {
+                                                   std::string device_sn = device_pair.first;
+                                                   fs::p2p::Payload::Device &device = device_pair.second;
+                                                   for (auto& read : device.methods) {
+                                                       BlackBean bean;
+                                                       bean.desc= iTools::getValue(read.params,"desc");
+                                                       bean.devices_array= iTools::getStringVector(read.params,"devices_array",{});
+                                                       bean.model_array= iTools::getStringVector(read.params,"model_array",{});
+                                                       std::string request_device_sn= iTools::getValue(read.params,"request_device_sn");
+                                                       std::string update_time= iTools::getValue(read.params,"update_time");
+                                                       LOGD("request_device_sn>>%s,update_time>>%s",request_device_sn.c_str(),update_time.c_str());
+                                                       beanList.push_back(bean);
+                                                   }
 
-                                           std::vector<fs::p2p::InfomationManifest> infos;
-                                           for (auto& device_pair : res_device_list) {
-                                               std::string device_sn = device_pair.first;
-                                               fs::p2p::Payload::Device& device = device_pair.second;
-                                               std::string pdid=device.product_id;
-                                               LOGD("getInfomationDevsList>>device_sn>>%s",device_sn.c_str());
-                                               fs::p2p::InfomationManifest infomationManifest;
-                                               infomationManifest.sn=device_sn;
-                                               infomationManifest.product_id=pdid;
-                                               infomationManifest.name="000";
-                                               infomationManifest.model="0";
-                                               infomationManifest.type=fs::p2p::InfomationManifest::Type::Unknown;
-                                               infomationManifest.version=1;
-                                               infos.push_back(infomationManifest);
+                                                   for (auto& read : device.events) {
+
+                                                   }
+                                                   for (auto& read : device.services) {
+
+                                                   }
+                                               }
+                                               callGlobalBlackCallback(gJvm,beanList);
+                                           }else if(action=="set_iot_blacklist"){
+                                               LOGD("set_iot_blacklist>>success");
                                            }
-                                           infomationsCallback.callDevices(gJvm,infos);
                                        }, NULL,xcore_manifest.getSubscribeTopic());
+    return !iid.empty();
 }
+
+JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_getBlackList
+        (JNIEnv* env, jclass, jobject icallback) {
+    setGlobalBlackCallback(env,icallback);
+    getInfomationListCallback("get_iot_blacklist",{});
+}
+
+JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_setBlackList
+        (JNIEnv* env, jclass, jobject in ) {
+    std::map<std::string, ordered_json> params=iTools::javaMapToCppMapValue(env, in);
+    return getInfomationListCallback("set_iot_blacklist",params);
+}
+
+JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_getInfomationList
+        (JNIEnv* env, jclass, jobject icallback) {
+    infomationsCallback.set(env,icallback);
+    getInfomationListCallback("fsp2p_devices",{});
+}
+
 
 JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_unSubscribe
         (JNIEnv* env, jclass, jobject information) {
@@ -391,11 +408,6 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_subscribe
         if (enumCls) env->DeleteLocalRef(enumCls);
     }
     jint jversion = mid_getVersion ? env->CallIntMethod(information, mid_getVersion) : 0;
-
-//
-//    if (!foundDeviceSingle(getInfomationDevsList(), jstrToStd(env, jsn))) {
-//        return false;
-//    }
 
     fs::p2p::InfomationManifest target;
     target.sn = iTools::jstrToStd(env, jsn);
