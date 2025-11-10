@@ -84,7 +84,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
         return ;
     }
     fs::p2p::InfomationManifest manifest = iTools::convertToCppInfomation(env, information);
-    // 限定锁的作用域到 pipeline 重建部分
+    // 限定锁的作用域到 pipeline 重建部分code review
     std::lock_guard<std::mutex> lk(s_mp_mutex);
     s_mp.reset(new fs::p2p::MessagePipeline(manifest));
     const std::string host = iTools::jstrToStd(env, jhost);

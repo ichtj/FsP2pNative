@@ -10,11 +10,12 @@ public interface IPipelineCallback {
     void p2pConnState(boolean connected, String description);
 
     /**
-     *
-     * @param connected
-     * @param description
+     * iot连接状态
+     * @param connected 是否连接
+     * @param description 描述
      */
     void iotConnState(boolean connected, String description);
+
     /**
      * 消息到达
      *

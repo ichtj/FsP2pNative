@@ -10,10 +10,8 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.TextView;
-import android.widget.ToggleButton;
 
 import com.library.natives.BaseData;
 import com.library.natives.BaseFsP2pTools;
@@ -23,16 +21,9 @@ import com.library.natives.IInfomationsCallback;
 import com.library.natives.IPipelineCallback;
 import com.library.natives.Infomation;
 import com.library.natives.PutType;
-import com.library.natives.SubDev;
-import com.library.natives.FsPipelineJNI;
 import com.library.natives.Fsp2pTools;
 import com.library.natives.Type;
 import com.library.natives.XCoreBean;
-
-import org.json.JSONArray;
-import org.json.JSONObject;
-
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -87,31 +78,36 @@ public class MainActivity extends AppCompatActivity{
 
             @Override
             public void msgArrives(BaseData baseData) {
-                handler.sendMessage(handler.obtainMessage(0x00, "msgArrives : "+baseData.toString ()));
-                Log.d (TAG, "msgArrives: "+baseData.toString ()+",putType>>"+baseData.iPutType);
-                Map<String, Object> maps=new HashMap<> (  );
-                if (baseData.iPutType== PutType.METHOD){
-                    maps.put ("data",System.currentTimeMillis ());
-                }else if (baseData.iPutType==PutType.GETPERTIES){
-                    maps=baseData.maps;;
-                    Iterator <String> iterator=maps.keySet ().iterator ();
-                    while (iterator.hasNext ()){
-                        String key=iterator.next ();
-                        Object value=maps.get (key);
-                        Log.d (TAG, "msgArrives: key>>"+key+",value>>"+value );
-                        maps.put (key,System.currentTimeMillis ());
-                    }
-                }else if (baseData.iPutType==PutType.SETPERTIES){
-                    maps=baseData.maps;;
-                    Iterator <String> iterator=maps.keySet ().iterator ();
-                    while (iterator.hasNext ()){
-                        String key=iterator.next ();
-                        Object value=maps.get (key);
-                        Log.d (TAG, "msgArrives: key>>"+key+",value>>"+value );
-                        maps.put (key,value);
-                    }
+                handler.sendMessage(handler.obtainMessage(0x00, "msgArrives : " + baseData.toString()));
+                Log.d(TAG, "msgArrives: " + baseData.toString() + ",putType>>" + baseData.iPutType);
+                Map<String, Object> maps = new HashMap<>();
+                switch (baseData.iPutType) {
+                    case PutType.METHOD:
+                        maps.put("data", System.currentTimeMillis());
+                        break;
+                    case PutType.GETPERTIES:
+                        if (baseData.maps != null) {
+                            maps.putAll(baseData.maps);
+                            for (Map.Entry<String, Object> entry : maps.entrySet()) {
+                                Log.d(TAG, "msgArrives: key>>" + entry.getKey() + ",value>>" + entry.getValue());
+                                maps.put(entry.getKey(), System.currentTimeMillis());
+                            }
+                        }
+                        break;
+                    case PutType.SETPERTIES:
+                        if (baseData.maps != null) {
+                            maps.putAll(baseData.maps);
+                            for (Map.Entry<String, Object> entry : maps.entrySet()) {
+                                Log.d(TAG, "msgArrives: key>>" + entry.getKey() + ",value>>" + entry.getValue());
+                                // 保持原值
+                            }
+                        }
+                        break;
+                    default:
+                        // 其他类型不处理
+                        break;
                 }
-                BaseFsP2pTools.putIotReply (baseData.iPutType,baseData.iid,baseData.operation, maps);
+                BaseFsP2pTools.putIotReply(baseData.iPutType, baseData.iid, baseData.operation, maps);
             }
 
             @Override
@@ -139,23 +135,6 @@ public class MainActivity extends AppCompatActivity{
                 handler.sendMessage(handler.obtainMessage(0x00, "subscribeFail: topic>>"+topic+",description>>"+description)) ;;
             }
         });
-    }
-
-    public static void hearbeat() {
-        new Thread() {
-            @Override
-            public void run() {
-                super.run();
-                while (true) {
-                    FsPipelineJNI.postHeartbeat();
-                    try {
-                        Thread.sleep(1 * 60 * 1000);
-                    } catch (Throwable throwable) {
-                        throwable.printStackTrace();
-                    }
-                }
-            }
-        }.start();
     }
 
     public void connectClick(View view) {
@@ -187,10 +166,7 @@ public class MainActivity extends AppCompatActivity{
     }
 
     public void getDeviceModelClick(View view) {
-        List<SubDev> devModels = FsPipelineJNI.getDevModelList();
-        String jsonFormat = JsonFormatUtils.formatJson(GsonTools.toJsonWtihNullField(devModels));
-        Log.d(TAG, "getDeviceModelClick: jsonFormat>>" + jsonFormat);
-        handler.sendMessage(handler.obtainMessage(0x00, jsonFormat));
+        handler.sendMessage(handler.obtainMessage(0x00, "getDeviceModelClick"));
     }
 
     public void clearTvClick(View view) {

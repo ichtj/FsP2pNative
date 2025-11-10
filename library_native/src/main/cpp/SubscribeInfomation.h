@@ -5,12 +5,10 @@
 #include <map>
 #include <mutex>
 #include <vector>
+#include "Logger.h"
 #include <android/log.h>
 #include "fs_p2p/Packetizer.h"
 
-#define LOG_TAG "SubscribeInfomation"
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
 /**
  * 全局单例管理类
