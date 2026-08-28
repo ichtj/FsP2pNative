@@ -18,11 +18,6 @@ android {
             abiFilters 'arm64-v8a',"armeabi-v7a"
         }
 
-        externalNativeBuild {
-            cmake {
-                cppFlags '-std=c++14'
-            }
-        }
     }
 
     buildTypes {
@@ -34,6 +29,10 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    lintOptions {
+        htmlReport false
     }
 
     externalNativeBuild {
@@ -50,6 +49,7 @@ android {
 }
 
 dependencies {
+    testImplementation 'junit:junit:4.13.2'
     api rootProject.ext.support["appcompat-v7"]
     api rootProject.ext.support["annotations"]
     androidTestImplementation rootProject.ext.support["runner"]

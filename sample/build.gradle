@@ -39,9 +39,14 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
 
+    lintOptions {
+        htmlReport false
+    }
+
 }
 
 dependencies {
+    testImplementation 'junit:junit:4.13.2'
     //support
     androidTestImplementation rootProject.ext.support["runner"]
     androidTestImplementation rootProject.ext.support["espresso"]
