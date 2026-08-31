@@ -4,6 +4,7 @@
 #include <string>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <vector>
 #include "Logger.h"
 #include <android/log.h>
@@ -21,8 +22,8 @@ public:
     // 添加设备信息
     void addManifest(const fs::p2p::InfomationManifest &info);
 
-    // 按 SN 获取设备信息（返回 nullptr 表示未找到）
-    const fs::p2p::InfomationManifest *getManifest(const std::string &sn);
+    // 按 SN 获取设备信息（返回空 optional 表示未找到）
+    std::optional<fs::p2p::InfomationManifest> getManifest(const std::string &sn);
 
     // 删除设备信息
     void removeManifest(const std::string &sn);

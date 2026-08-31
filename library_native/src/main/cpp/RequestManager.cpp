@@ -17,6 +17,7 @@ void RequestManager::addRequest(const fs::p2p::Request& req) {
 }
 
 std::list<fs::p2p::Request> RequestManager::getAllRequests() {
+    std::lock_guard<std::mutex> lock(mMutex);
     return mRequestList;  // 返回一份拷贝，避免外部操作破坏内部数据
 }
 

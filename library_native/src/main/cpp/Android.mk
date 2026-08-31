@@ -31,10 +31,7 @@ LOCAL_SRC_FILES += BaseXLink.cpp \
 # 添加 C++ 标志和链接库
 LOCAL_CPPFLAGS := -std=c++17
 LOCAL_C_INCLUDES := $(LOCAL_PATH)/include
-LOCAL_LDLIBS := -L$(SYSROOT)/usr/lib -llog -lm -lz -llog -lstdc++ -lfs_p2p -lmosquitto
-ifeq ($(TARGET_ARCH_ABI),arm64-v8a)
-LOCAL_LDLIBS += -L$(LOCAL_PATH)/arm64-v8a
-else
-LOCAL_LDLIBS += -L$(LOCAL_PATH)/armeabi-v7a
-endif
+# Link the exact prebuilt libraries that Gradle packages from src/main/libs.
+LOCAL_LDLIBS := -L$(LOCAL_PATH)/../libs/$(TARGET_ARCH_ABI) \
+                -llog -lm -lz -lstdc++ -lfs_p2p -lmosquitto
 include $(BUILD_SHARED_LIBRARY)

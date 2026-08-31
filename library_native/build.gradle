@@ -1,7 +1,9 @@
 apply plugin: 'com.android.library'
-apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'maven-publish'
 
 android {
+    namespace 'com.library.natives'
+    ndkVersion '22.1.7171670'
     compileSdkVersion rootProject.ext.android.compileSdkVersion
 
     defaultConfig {
@@ -44,6 +46,22 @@ android {
     sourceSets {
         main {
             jniLibs.srcDirs = ['src/main/libs'] // 指定输出目录
+        }
+    }
+    publishing {
+        singleVariant('release')
+    }
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId = providers.gradleProperty('group').getOrElse('com.github.ichtj')
+                artifactId = rootProject.name
+                version = providers.gradleProperty('version').getOrElse(rootProject.ext.android.versionName)
+            }
         }
     }
 }

@@ -1,22 +1,37 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include <thread>
-#include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <functional>
+#include <mutex>
+#include <thread>
 
 class Timer {
 public:
-    Timer();                    // 构造函数
-    ~Timer();                   // 析构函数，自动停止定时器
+    Timer();
+    ~Timer();
 
-    void start(int intervalMs, std::function<void()> task);  // 启动定时任务
-    void stop();                                           // 停止定时任务
-    bool isRunning() const;                               // 判断是否正在运行
+    Timer(const Timer&) = delete;
+    Timer& operator=(const Timer&) = delete;
+
+    void start(int intervalMs, std::function<void()> task);
+    void stop();
+    bool isRunning() const;
 
 private:
-    std::atomic<bool> running;
-    std::thread timerThread;
+    void run();
+
+    mutable std::mutex mutex;
+    std::condition_variable condition;
+    std::thread worker;
+    std::thread::id executingThread;
+    std::function<void()> currentTask;
+    std::chrono::milliseconds interval{1};
+    unsigned long long generation = 0;
+    bool running = false;
+    bool executing = false;
+    bool shuttingDown = false;
 };
 
 #endif // TIMER_H

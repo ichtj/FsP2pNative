@@ -58,6 +58,7 @@ public:
     static JNIEnv* getEnv(JavaVM* jvm, bool& attached);
 
 private:
+    mutable std::mutex callbackMutex;
     jobject globalRef = nullptr;
     jclass callbackClass = nullptr;
     jmethodID mid_onBlack = nullptr;

@@ -1,164 +1,143 @@
-// ========== BaseDataConverter.cpp ==========
 #include "BaseDataConverter.h"
-#include "PipelineCallback.h"
-#include "BaseData.h"
 
-// 递归转换 ordered_json 到 Java Object
-jobject jsonToJavaObject(JNIEnv* env, const ordered_json& json) {
-    if (json.is_null()) {
-        return nullptr;
-    }
+namespace {
 
-    if (json.is_string()) {
-        jstring jstr = env->NewStringUTF(json.get<std::string>().c_str());
-        return jstr;
-    }
+jobject boxedInteger(JNIEnv* env, jint value) {
+    jclass cls = env->FindClass("java/lang/Integer");
+    if (!cls) return nullptr;
+    jmethodID valueOf = env->GetStaticMethodID(cls, "valueOf", "(I)Ljava/lang/Integer;");
+    jobject result = valueOf ? env->CallStaticObjectMethod(cls, valueOf, value) : nullptr;
+    env->DeleteLocalRef(cls);
+    return result;
+}
 
-    if (json.is_number_integer()) {
-        jint value = static_cast<jint>(json.get<int64_t>());
-        return env->NewObject(env->FindClass("java/lang/Integer"),
-                              env->GetMethodID(env->FindClass("java/lang/Integer"), "<init>", "(I)V"), value);
-    }
+jobject boxedLong(JNIEnv* env, jlong value) {
+    jclass cls = env->FindClass("java/lang/Long");
+    if (!cls) return nullptr;
+    jmethodID valueOf = env->GetStaticMethodID(cls, "valueOf", "(J)Ljava/lang/Long;");
+    jobject result = valueOf ? env->CallStaticObjectMethod(cls, valueOf, value) : nullptr;
+    env->DeleteLocalRef(cls);
+    return result;
+}
 
-    if (json.is_number_unsigned()) {
-        jlong value = static_cast<jlong>(json.get<uint64_t>());
-        return env->NewObject(env->FindClass("java/lang/Long"),
-                              env->GetMethodID(env->FindClass("java/lang/Long"), "<init>", "(J)V"), value);
-    }
+jobject boxedDouble(JNIEnv* env, jdouble value) {
+    jclass cls = env->FindClass("java/lang/Double");
+    if (!cls) return nullptr;
+    jmethodID valueOf = env->GetStaticMethodID(cls, "valueOf", "(D)Ljava/lang/Double;");
+    jobject result = valueOf ? env->CallStaticObjectMethod(cls, valueOf, value) : nullptr;
+    env->DeleteLocalRef(cls);
+    return result;
+}
 
-    if (json.is_number_float()) {
-        jdouble value = json.get<double>();
-        return env->NewObject(env->FindClass("java/lang/Double"),
-                              env->GetMethodID(env->FindClass("java/lang/Double"), "<init>", "(D)V"), value);
-    }
+jobject boxedBoolean(JNIEnv* env, jboolean value) {
+    jclass cls = env->FindClass("java/lang/Boolean");
+    if (!cls) return nullptr;
+    jmethodID valueOf = env->GetStaticMethodID(cls, "valueOf", "(Z)Ljava/lang/Boolean;");
+    jobject result = valueOf ? env->CallStaticObjectMethod(cls, valueOf, value) : nullptr;
+    env->DeleteLocalRef(cls);
+    return result;
+}
 
-    if (json.is_boolean()) {
-        jboolean value = json.get<bool>();
-        return env->NewObject(env->FindClass("java/lang/Boolean"),
-                              env->GetMethodID(env->FindClass("java/lang/Boolean"), "<init>", "(Z)V"), value);
-    }
+jobject jsonToJavaObject(JNIEnv* env, const ordered_json& value);
 
-    if (json.is_array()) {
-        jclass arrayListClass = env->FindClass("java/util/ArrayList");
-        jmethodID arrayListConstructor = env->GetMethodID(arrayListClass, "<init>", "()V");
-        jobject arrayList = env->NewObject(arrayListClass, arrayListConstructor);
-        jmethodID addMethod = env->GetMethodID(arrayListClass, "add", "(Ljava/lang/Object;)Z");
-
-        for (const auto& item : json) {
+jobject jsonArrayToJavaList(JNIEnv* env, const ordered_json& value) {
+    jclass listClass = env->FindClass("java/util/ArrayList");
+    if (!listClass) return nullptr;
+    jmethodID constructor = env->GetMethodID(listClass, "<init>", "()V");
+    jmethodID add = env->GetMethodID(listClass, "add", "(Ljava/lang/Object;)Z");
+    jobject list = constructor && add ? env->NewObject(listClass, constructor) : nullptr;
+    if (list) {
+        for (const auto& item : value) {
             jobject javaItem = jsonToJavaObject(env, item);
-            env->CallBooleanMethod(arrayList, addMethod, javaItem);
+            env->CallBooleanMethod(list, add, javaItem);
+            if (javaItem) env->DeleteLocalRef(javaItem);
         }
-        return arrayList;
     }
-
-    if (json.is_object()) {
-        jclass hashMapClass = env->FindClass("java/util/HashMap");
-        jmethodID hashMapConstructor = env->GetMethodID(hashMapClass, "<init>", "()V");
-        jobject hashMap = env->NewObject(hashMapClass, hashMapConstructor);
-        jmethodID putMethod = env->GetMethodID(hashMapClass, "put",
-                                               "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
-
-        for (const auto& [key, value] : json.items()) {
-            jstring jkey = env->NewStringUTF(key.c_str());
-            jobject jvalue = jsonToJavaObject(env, value);
-            env->CallObjectMethod(hashMap, putMethod, jkey, jvalue);
-        }
-        return hashMap;
-    }
-
-    return nullptr;
+    env->DeleteLocalRef(listClass);
+    return list;
 }
 
-// 将 std::map<std::string, ordered_json> 转换为 Java Map<String, Object>
-jobject cppMapToJavaMap(JNIEnv* env, const std::map<std::string, ordered_json>& cppMaps) {
-    jclass hashMapClass = env->FindClass("java/util/HashMap");
-    jmethodID hashMapConstructor = env->GetMethodID(hashMapClass, "<init>", "()V");
-    jobject javaMap = env->NewObject(hashMapClass, hashMapConstructor);
-    jmethodID putMethod = env->GetMethodID(hashMapClass, "put",
-                                           "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
-
-    for (const auto& [key, value] : cppMaps) {
-        jstring jkey = env->NewStringUTF(key.c_str());
-        jobject jvalue = jsonToJavaObject(env, value);
-        env->CallObjectMethod(javaMap, putMethod, jkey, jvalue);
+jobject jsonObjectToJavaMap(JNIEnv* env, const ordered_json& value) {
+    jclass mapClass = env->FindClass("java/util/HashMap");
+    if (!mapClass) return nullptr;
+    jmethodID constructor = env->GetMethodID(mapClass, "<init>", "()V");
+    jmethodID put = env->GetMethodID(
+            mapClass, "put", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;");
+    jobject map = constructor && put ? env->NewObject(mapClass, constructor) : nullptr;
+    if (map) {
+        for (const auto& item : value.items()) {
+            jstring key = env->NewStringUTF(item.key().c_str());
+            jobject javaValue = jsonToJavaObject(env, item.value());
+            env->CallObjectMethod(map, put, key, javaValue);
+            if (key) env->DeleteLocalRef(key);
+            if (javaValue) env->DeleteLocalRef(javaValue);
+        }
     }
-
-    return javaMap;
+    env->DeleteLocalRef(mapClass);
+    return map;
 }
 
+jobject jsonToJavaObject(JNIEnv* env, const ordered_json& value) {
+    if (value.is_null()) return nullptr;
+    if (value.is_string()) return env->NewStringUTF(value.get<std::string>().c_str());
+    if (value.is_boolean()) return boxedBoolean(env, value.get<bool>());
+    if (value.is_number_unsigned()) {
+        return boxedLong(env, static_cast<jlong>(value.get<uint64_t>()));
+    }
+    if (value.is_number_integer()) {
+        const int64_t number = value.get<int64_t>();
+        if (number >= INT32_MIN && number <= INT32_MAX) {
+            return boxedInteger(env, static_cast<jint>(number));
+        }
+        return boxedLong(env, static_cast<jlong>(number));
+    }
+    if (value.is_number_float()) return boxedDouble(env, value.get<double>());
+    if (value.is_array()) return jsonArrayToJavaList(env, value);
+    if (value.is_object()) return jsonObjectToJavaMap(env, value);
+    return env->NewStringUTF(value.dump().c_str());
+}
 
-// 将C++ BaseData转换为Java BaseData对象
-jobject BaseDataConverter::toJavaObject(JNIEnv* env, const BaseData& cppData,jclass baseDataClass) {
-    if (env == nullptr) {
-        LOGE("JNIEnv为空");
+jobject cppMapToJavaMap(
+        JNIEnv* env, const std::map<std::string, ordered_json>& values) {
+    ordered_json object = ordered_json::object();
+    for (const auto& entry : values) object[entry.first] = entry.second;
+    return jsonObjectToJavaMap(env, object);
+}
+
+void clearException(JNIEnv* env, const char* operation) {
+    if (!env->ExceptionCheck()) return;
+    LOGE("BaseData conversion failed: %s", operation);
+    env->ExceptionDescribe();
+    env->ExceptionClear();
+}
+
+} // namespace
+
+jobject BaseDataConverter::toJavaObject(
+        JNIEnv* env, const BaseData& cppData, jclass baseDataClass) {
+    if (!env || !baseDataClass) return nullptr;
+
+    jmethodID constructor = env->GetMethodID(
+            baseDataClass,
+            "<init>",
+            "(ILjava/lang/String;Ljava/lang/String;Ljava/util/Map;)V");
+    if (!constructor) {
+        clearException(env, "resolve BaseData constructor");
         return nullptr;
     }
 
-    // 1. 查找Java BaseData类（修改为你的实际包名）
-    if (baseDataClass == nullptr) {
-        LOGE("找不到BaseData类");
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-        return nullptr;
+    jstring iid = env->NewStringUTF(cppData.iid.c_str());
+    jstring operation = env->NewStringUTF(cppData.operation.c_str());
+    jobject maps = cppMapToJavaMap(env, cppData.maps);
+    jobject result = nullptr;
+    if (iid && operation && maps) {
+        result = env->NewObject(
+                baseDataClass, constructor, cppData.iPutType, iid, operation, maps);
     }
 
-    // 2. 转换字符串字段
-    jstring jIid = env->NewStringUTF(cppData.iid.c_str());
-    jstring jOperation = env->NewStringUTF(cppData.operation.c_str());
-
-    if (jIid == nullptr || jOperation == nullptr) {
-        LOGE("创建字符串失败");
-        if (jIid) env->DeleteLocalRef(jIid);
-        if (jOperation) env->DeleteLocalRef(jOperation);
-        env->DeleteLocalRef(baseDataClass);
-        return nullptr;
-    }
-
-    // 3. 创建Java HashMap存储maps
-    jobject jMaps = cppMapToJavaMap(env, cppData.maps);
-    if (jMaps == nullptr) {
-        LOGE("创建HashMap失败");
-        env->DeleteLocalRef(jIid);
-        env->DeleteLocalRef(jOperation);
-        env->DeleteLocalRef(baseDataClass);
-        return nullptr;
-    }
-
-    // 4. 获取构造函数
-    // 签名: (ILjava/lang/String;Ljava/lang/String;Ljava/util/Map;)V
-    jmethodID constructor = env->GetMethodID(baseDataClass, "<init>",
-                                             "(ILjava/lang/String;Ljava/lang/String;Ljava/util/Map;)V");
-
-    if (constructor == nullptr) {
-        LOGE("找不到BaseData构造函数");
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-        env->DeleteLocalRef(jIid);
-        env->DeleteLocalRef(jOperation);
-        env->DeleteLocalRef(jMaps);
-        env->DeleteLocalRef(baseDataClass);
-        return nullptr;
-    }
-
-    // 5. 创建Java BaseData对象
-    jobject jBaseData = env->NewObject(baseDataClass, constructor,
-                                       cppData.iPutType, jIid, jOperation, jMaps);
-
-    // 6. 清理局部引用
-    env->DeleteLocalRef(jIid);
-    env->DeleteLocalRef(jOperation);
-    env->DeleteLocalRef(jMaps);
-//    env->DeleteLocalRef(baseDataClass);
-
-    if (jBaseData == nullptr) {
-        LOGE("创建Java BaseData对象失败");
-        env->ExceptionDescribe();
-        env->ExceptionClear();
-        return nullptr;
-    }
-
-    LOGD("成功转换为Java BaseData对象 (iPutType=%d, iid=%s)",
-         cppData.iPutType, cppData.iid.c_str());
-
-    return jBaseData;
+    if (iid) env->DeleteLocalRef(iid);
+    if (operation) env->DeleteLocalRef(operation);
+    if (maps) env->DeleteLocalRef(maps);
+    clearException(env, "create BaseData");
+    return result;
 }

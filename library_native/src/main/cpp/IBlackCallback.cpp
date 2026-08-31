@@ -102,6 +102,8 @@ BlackBean BlackBeanConverter::fromJava(JNIEnv* env, jobject obj) {
 
     bean.devices_array = convertJavaStringArray(env, jDevices);
     bean.model_array   = convertJavaStringArray(env, jModels);
+    if (jDevices) env->DeleteLocalRef(jDevices);
+    if (jModels) env->DeleteLocalRef(jModels);
     if (jDesc) {
         const char* descStr = env->GetStringUTFChars(jDesc, nullptr);
         bean.desc = descStr ? descStr : "";
@@ -159,31 +161,67 @@ jobject BlackBeanConverter::toJavaList(JNIEnv* env, const std::vector<BlackBean>
 }
 
 // ==================== 回调实现 ====================
-static std::unique_ptr<IBlackCallback> g_callback;
+static std::shared_ptr<IBlackCallback> g_callback;
+static std::mutex g_callbackMutex;
 static JavaVM* g_jvm = nullptr;
 
 IBlackCallback::IBlackCallback() = default;
 IBlackCallback::~IBlackCallback() = default;
 
 void IBlackCallback::set(JNIEnv* env, jobject obj) {
+    if (!env || !obj) return;
     env->GetJavaVM(&g_jvm);
-    clear(env);
-    globalRef = env->NewGlobalRef(obj);
+    jobject nextGlobalRef = env->NewGlobalRef(obj);
     jclass localCls = env->GetObjectClass(obj);
-    callbackClass = (jclass)env->NewGlobalRef(localCls);
+    jclass nextCallbackClass = localCls
+            ? static_cast<jclass>(env->NewGlobalRef(localCls))
+            : nullptr;
+    jmethodID nextMethod = nextCallbackClass
+            ? env->GetMethodID(nextCallbackClass, "onBlack", "(Ljava/util/List;)V")
+            : nullptr;
     env->DeleteLocalRef(localCls);
 
-    mid_onBlack = env->GetMethodID(callbackClass, "onBlack", "(Ljava/util/List;)V");
+    if (!nextGlobalRef || !nextCallbackClass || !nextMethod || env->ExceptionCheck()) {
+        if (env->ExceptionCheck()) {
+            env->ExceptionDescribe();
+            env->ExceptionClear();
+        }
+        if (nextGlobalRef) env->DeleteGlobalRef(nextGlobalRef);
+        if (nextCallbackClass) env->DeleteGlobalRef(nextCallbackClass);
+        return;
+    }
+
+    jobject oldGlobalRef = nullptr;
+    jclass oldCallbackClass = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex);
+        oldGlobalRef = globalRef;
+        oldCallbackClass = callbackClass;
+        globalRef = nextGlobalRef;
+        callbackClass = nextCallbackClass;
+        mid_onBlack = nextMethod;
+    }
+    if (oldGlobalRef) env->DeleteGlobalRef(oldGlobalRef);
+    if (oldCallbackClass) env->DeleteGlobalRef(oldCallbackClass);
 
     // 🚀 自动初始化 BlackBeanConverter
     BlackBeanConverter::ensureInitialized(env, obj);
 }
 
 void IBlackCallback::clear(JNIEnv* env) {
-    if (globalRef) env->DeleteGlobalRef(globalRef);
-    if (callbackClass) env->DeleteGlobalRef(callbackClass);
-    globalRef = nullptr;
-    callbackClass = nullptr;
+    if (!env) return;
+    jobject oldGlobalRef = nullptr;
+    jclass oldCallbackClass = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex);
+        oldGlobalRef = globalRef;
+        oldCallbackClass = callbackClass;
+        globalRef = nullptr;
+        callbackClass = nullptr;
+        mid_onBlack = nullptr;
+    }
+    if (oldGlobalRef) env->DeleteGlobalRef(oldGlobalRef);
+    if (oldCallbackClass) env->DeleteGlobalRef(oldCallbackClass);
 }
 
 JNIEnv* IBlackCallback::getEnv(JavaVM* jvm, bool& attached) {
@@ -193,27 +231,53 @@ JNIEnv* IBlackCallback::getEnv(JavaVM* jvm, bool& attached) {
 void IBlackCallback::callOnBlack(JavaVM* jvm, const std::vector<BlackBean>& list) {
     bool attached = false;
     JNIEnv* env = getEnv(jvm, attached);
-    if (!env || !mid_onBlack) return;
+    if (!env) return;
+    jobject callback = nullptr;
+    jmethodID method = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(callbackMutex);
+        if (globalRef && mid_onBlack) {
+            callback = env->NewLocalRef(globalRef);
+            method = mid_onBlack;
+        }
+    }
+    if (!callback) {
+        if (attached) jvm->DetachCurrentThread();
+        return;
+    }
     jobject jList = BlackBeanConverter::toJavaList(env, list);
-    env->CallVoidMethod(globalRef, mid_onBlack, jList);
+    env->CallVoidMethod(callback, method, jList);
     if (env->ExceptionCheck()) { env->ExceptionDescribe(); env->ExceptionClear(); }
-    env->DeleteLocalRef(jList);
+    if (jList) env->DeleteLocalRef(jList);
+    env->DeleteLocalRef(callback);
     if (attached) jvm->DetachCurrentThread();
 }
 
 // ==================== 全局管理 ====================
 void setGlobalBlackCallback(JNIEnv* env, jobject callback) {
-    if (!g_callback) g_callback = std::make_unique<IBlackCallback>();
-    g_callback->set(env, callback);
+    std::shared_ptr<IBlackCallback> target;
+    {
+        std::lock_guard<std::mutex> lock(g_callbackMutex);
+        if (!g_callback) g_callback = std::make_shared<IBlackCallback>();
+        target = g_callback;
+    }
+    target->set(env, callback);
 }
 
 void clearGlobalBlackCallback(JNIEnv* env) {
-    if (g_callback) {
-        g_callback->clear(env);
-        g_callback.reset();
+    std::shared_ptr<IBlackCallback> target;
+    {
+        std::lock_guard<std::mutex> lock(g_callbackMutex);
+        target = std::move(g_callback);
     }
+    if (target) target->clear(env);
 }
 
 void callGlobalBlackCallback(JavaVM* jvm, const std::vector<BlackBean>& list) {
-    if (g_callback) g_callback->callOnBlack(jvm, list);
+    std::shared_ptr<IBlackCallback> target;
+    {
+        std::lock_guard<std::mutex> lock(g_callbackMutex);
+        target = g_callback;
+    }
+    if (target) target->callOnBlack(jvm, list);
 }

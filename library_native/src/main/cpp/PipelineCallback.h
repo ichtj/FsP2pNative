@@ -2,51 +2,49 @@
 #define JAVA_IMQTT_CALLBACK_H
 
 #include <jni.h>
+
+#include <mutex>
 #include <string>
-#include <map>
-#include <memory>
+
 #include "BaseData.h"
 
-// PipelineCallback 类声明
 class PipelineCallback {
 public:
     PipelineCallback();
     ~PipelineCallback();
 
-    // 设置回调
-    void set(JNIEnv* env, jobject obj);
+    PipelineCallback(const PipelineCallback&) = delete;
+    PipelineCallback& operator=(const PipelineCallback&) = delete;
 
-    // 清理回调
+    void set(JNIEnv* env, jobject obj);
     void clear(JNIEnv* env);
 
-    // 获取 JNIEnv 并决定是否需要 detach
-    JNIEnv* getEnv(JavaVM* gJvm,bool& attached);
+    JNIEnv* getEnv(JavaVM* jvm, bool& attached);
 
-    // 调用 JNI 方法
-    template <typename... Args>
-    void callMethod(jmethodID methodID, Args... args);
-
-    // 各种回调方法
-    void callP2pConnState(JavaVM* gJvm,bool connected, const std::string& description);
-    void callIotConnState(JavaVM* gJvm,bool connected, const std::string& description);
-    void callMsgArrives(JavaVM* gJvm,const BaseData& baseData);  // 修改为传递 C++ 类型 BaseData
-    void callPushed(JavaVM* gJvm,const BaseData& baseData);  // 修改为传递 C++ 类型 BaseData
+    void callP2pConnState(JavaVM* jvm, bool connected, const std::string& description);
+    void callIotConnState(JavaVM* jvm, bool connected, const std::string& description);
+    void callMsgArrives(JavaVM* jvm, const BaseData& baseData);
+    void callPushed(JavaVM* jvm, const BaseData& baseData);
     void callIotReplyed(const std::string& act, const std::string& iid);
-    void callPushFail(JavaVM* gJvm,const BaseData& baseData, const std::string& desc);
-    void callSubscribed(JavaVM* gJvm,const std::string& topic);
-    void callSubscribeFail(JavaVM* gJvm,const std::string& topic, const std::string& desc);
+    void callPushFail(JavaVM* jvm, const BaseData& baseData, const std::string& desc);
+    void callSubscribed(JavaVM* jvm, const std::string& topic);
+    void callSubscribeFail(JavaVM* jvm, const std::string& topic, const std::string& desc);
 
 private:
+    void clearPendingException(JNIEnv* env, const char* operation);
+
+    mutable std::mutex callbackMutex;
+    JavaVM* javaVm;
     jobject globalRef;
-    jclass baseDataClass;  // 新增：缓存BaseData类的全局引用
-    jmethodID mid_p2p_connState,mid_iot_connState, mid_msgArrives, mid_pushed, mid_iotReplyed, mid_pushFail, mid_subscribed, mid_subscribeFail;
-
-    // 转换 C++ BaseData 到 Java BaseData
-    jobject toJavaBaseData(JNIEnv* env, const BaseData& baseData);
+    jclass baseDataClass;
+    jmethodID mid_p2p_connState;
+    jmethodID mid_iot_connState;
+    jmethodID mid_msgArrives;
+    jmethodID mid_pushed;
+    jmethodID mid_iotReplyed;
+    jmethodID mid_pushFail;
+    jmethodID mid_subscribed;
+    jmethodID mid_subscribeFail;
 };
-
-// 设置全局回调
-void setGlobalCallback(JNIEnv* env, jobject callback);
-void clearGlobalCallback(JNIEnv* env);
 
 #endif // JAVA_IMQTT_CALLBACK_H

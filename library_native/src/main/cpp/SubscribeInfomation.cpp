@@ -15,13 +15,13 @@ void SubscribeInfomation::addManifest(const fs::p2p::InfomationManifest &info) {
 }
 
 // 获取设备信息
-const fs::p2p::InfomationManifest *SubscribeInfomation::getManifest(const std::string &sn) {
+std::optional<fs::p2p::InfomationManifest> SubscribeInfomation::getManifest(const std::string &sn) {
     std::lock_guard<std::mutex> lock(mMutex);
     auto it = mManifestMap.find(sn);
     if (it != mManifestMap.end()) {
-        return &it->second;
+        return it->second;
     }
-    return nullptr;
+    return std::nullopt;
 }
 
 // 删除设备

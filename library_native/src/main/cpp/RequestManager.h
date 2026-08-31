@@ -34,9 +34,6 @@ private:
     RequestManager(const RequestManager&) = delete;
     RequestManager& operator=(const RequestManager&) = delete;
     // ✅ 这两个就是你问的变量
-    std::list<fs::p2p::Request> m_requests;  // 存放请求
-    std::mutex m_mutex;                      // 锁，保证线程安全
-
     std::list<fs::p2p::Request> mRequestList;
     std::mutex mMutex;
 };

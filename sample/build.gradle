@@ -1,6 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
+    namespace 'com.p2p.sample'
 //    signingConfigs {
 //        debug {
 //            storeFile file('../other/facefuture.jks')
