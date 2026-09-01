@@ -1,7 +1,15 @@
 #include "PipelineCallback.h"
 
+#include <atomic>
+
 #include "BaseDataConverter.h"
 #include "Logger.h"
+
+namespace {
+
+std::atomic<unsigned long long> s_connectionCallbackSequence{0};
+
+} // namespace
 
 PipelineCallback::PipelineCallback()
         : javaVm(nullptr),
@@ -19,7 +27,14 @@ PipelineCallback::PipelineCallback()
 PipelineCallback::~PipelineCallback() = default;
 
 void PipelineCallback::set(JNIEnv* env, jobject obj) {
-    if (!env || !obj) return;
+    if (!env || !obj) {
+        LOGE("[FsP2pDiag][JavaBridge] callback registration skipped reason=invalid_arguments env=%d callback=%d",
+             env != nullptr,
+             obj != nullptr);
+        return;
+    }
+
+    LOGD("[FsP2pDiag][JavaBridge] callback registration begin");
 
     JavaVM* nextVm = nullptr;
     env->GetJavaVM(&nextVm);
@@ -64,6 +79,19 @@ void PipelineCallback::set(JNIEnv* env, jobject obj) {
     if (localBaseDataClass) env->DeleteLocalRef(localBaseDataClass);
 
     if (!valid) {
+        LOGE("[FsP2pDiag][JavaBridge] callback registration failed vm=%d globalRef=%d baseDataClass=%d p2pMethod=%d iotMethod=%d msgMethod=%d pushedMethod=%d replyMethod=%d pushFailMethod=%d subscribedMethod=%d subscribeFailMethod=%d exception=%d",
+             nextVm != nullptr,
+             nextGlobalRef != nullptr,
+             nextBaseDataClass != nullptr,
+             nextP2pConnState != nullptr,
+             nextIotConnState != nullptr,
+             nextMsgArrives != nullptr,
+             nextPushed != nullptr,
+             nextIotReplyed != nullptr,
+             nextPushFail != nullptr,
+             nextSubscribed != nullptr,
+             nextSubscribeFail != nullptr,
+             env->ExceptionCheck());
         clearPendingException(env, "initialize pipeline callback");
         if (nextGlobalRef) env->DeleteGlobalRef(nextGlobalRef);
         if (nextBaseDataClass) env->DeleteGlobalRef(nextBaseDataClass);
@@ -91,10 +119,15 @@ void PipelineCallback::set(JNIEnv* env, jobject obj) {
 
     if (previousGlobalRef) env->DeleteGlobalRef(previousGlobalRef);
     if (previousBaseDataClass) env->DeleteGlobalRef(previousBaseDataClass);
+    LOGI("[FsP2pDiag][JavaBridge] callback registration complete replacedPrevious=%d",
+         previousGlobalRef != nullptr);
 }
 
 void PipelineCallback::clear(JNIEnv* env) {
-    if (!env) return;
+    if (!env) {
+        LOGE("[FsP2pDiag][JavaBridge] callback clear skipped reason=env_unavailable");
+        return;
+    }
 
     jobject previousGlobalRef = nullptr;
     jclass previousBaseDataClass = nullptr;
@@ -116,6 +149,8 @@ void PipelineCallback::clear(JNIEnv* env) {
 
     if (previousGlobalRef) env->DeleteGlobalRef(previousGlobalRef);
     if (previousBaseDataClass) env->DeleteGlobalRef(previousBaseDataClass);
+    LOGI("[FsP2pDiag][JavaBridge] callback clear complete hadCallback=%d",
+         previousGlobalRef != nullptr);
 }
 
 JNIEnv* PipelineCallback::getEnv(JavaVM* jvm, bool& attached) {
@@ -136,15 +171,27 @@ JNIEnv* PipelineCallback::getEnv(JavaVM* jvm, bool& attached) {
 void PipelineCallback::clearPendingException(JNIEnv* env, const char* operation) {
     if (!env || !env->ExceptionCheck()) return;
     LOGE("Java callback failed: %s", operation);
+    LOGE("[FsP2pDiag][JavaBridge] Java callback threw method=%s",
+         operation ? operation : "unknown");
     env->ExceptionDescribe();
     env->ExceptionClear();
 }
 
 void PipelineCallback::callP2pConnState(
         JavaVM* jvm, bool connected, const std::string& description) {
+    const unsigned long long dispatchId = s_connectionCallbackSequence.fetch_add(1) + 1;
+    LOGI("[FsP2pDiag][JavaBridge] dispatch requested dispatchId=%llu method=p2pConnState connected=%d desc=%s",
+         dispatchId,
+         connected,
+         description.c_str());
     bool attached = false;
     JNIEnv* env = getEnv(jvm, attached);
-    if (!env) return;
+    if (!env) {
+        LOGE("[FsP2pDiag][JavaBridge] dispatch dropped dispatchId=%llu method=p2pConnState reason=jni_env_unavailable vm=%d",
+             dispatchId,
+             jvm != nullptr);
+        return;
+    }
 
     jobject callback = nullptr;
     jmethodID method = nullptr;
@@ -156,20 +203,38 @@ void PipelineCallback::callP2pConnState(
         }
     }
     if (callback) {
+        LOGD("[FsP2pDiag][JavaBridge] invoking dispatchId=%llu method=p2pConnState attachedThread=%d",
+             dispatchId,
+             attached);
         jstring desc = env->NewStringUTF(description.c_str());
         env->CallVoidMethod(callback, method, static_cast<jboolean>(connected), desc);
         clearPendingException(env, "p2pConnState");
         if (desc) env->DeleteLocalRef(desc);
         env->DeleteLocalRef(callback);
+        LOGI("[FsP2pDiag][JavaBridge] dispatch returned dispatchId=%llu method=p2pConnState",
+             dispatchId);
+    } else {
+        LOGE("[FsP2pDiag][JavaBridge] dispatch dropped dispatchId=%llu method=p2pConnState reason=callback_or_method_unavailable",
+             dispatchId);
     }
     if (attached) jvm->DetachCurrentThread();
 }
 
 void PipelineCallback::callIotConnState(
         JavaVM* jvm, bool connected, const std::string& description) {
+    const unsigned long long dispatchId = s_connectionCallbackSequence.fetch_add(1) + 1;
+    LOGI("[FsP2pDiag][JavaBridge] dispatch requested dispatchId=%llu method=iotConnState connected=%d desc=%s",
+         dispatchId,
+         connected,
+         description.c_str());
     bool attached = false;
     JNIEnv* env = getEnv(jvm, attached);
-    if (!env) return;
+    if (!env) {
+        LOGE("[FsP2pDiag][JavaBridge] dispatch dropped dispatchId=%llu method=iotConnState reason=jni_env_unavailable vm=%d",
+             dispatchId,
+             jvm != nullptr);
+        return;
+    }
 
     jobject callback = nullptr;
     jmethodID method = nullptr;
@@ -181,11 +246,19 @@ void PipelineCallback::callIotConnState(
         }
     }
     if (callback) {
+        LOGD("[FsP2pDiag][JavaBridge] invoking dispatchId=%llu method=iotConnState attachedThread=%d",
+             dispatchId,
+             attached);
         jstring desc = env->NewStringUTF(description.c_str());
         env->CallVoidMethod(callback, method, static_cast<jboolean>(connected), desc);
         clearPendingException(env, "iotConnState");
         if (desc) env->DeleteLocalRef(desc);
         env->DeleteLocalRef(callback);
+        LOGI("[FsP2pDiag][JavaBridge] dispatch returned dispatchId=%llu method=iotConnState",
+             dispatchId);
+    } else {
+        LOGE("[FsP2pDiag][JavaBridge] dispatch dropped dispatchId=%llu method=iotConnState reason=callback_or_method_unavailable",
+             dispatchId);
     }
     if (attached) jvm->DetachCurrentThread();
 }
