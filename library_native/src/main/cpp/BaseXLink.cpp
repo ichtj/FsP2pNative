@@ -9,6 +9,7 @@
 #include <mutex>
 #include <thread>
 #include "fs_p2p/MessagePipeline.h"
+#include "IotConnectionState.h"
 #include "PipelineCallback.h"
 #include "Timer.h"
 #include "RequestManager.h"
@@ -45,15 +46,16 @@ size_t s_mp_operations = 0;
 bool s_mp_accepting = false;
 std::atomic<ConnectionState> s_connectionState{ConnectionState::Disconnected};
 std::atomic<int64_t> s_connectStartedAtMs{0};
-std::atomic<int> iot_connect_state_value{0};
 std::atomic<bool> isIotSubscribed{false};
 std::atomic<bool> isIotSubscriptionPending{false};
 std::atomic<uint64_t> s_connectRequestSequence{0};
 std::atomic<uint64_t> s_connectionSequence{0};
 std::atomic<uint64_t> s_activeConnectionId{0};
 std::mutex s_iotMutex;
+std::mutex s_iotStateDispatchMutex;
 Timer g_timer;
 PipelineCallback g_i_mqtt_callback;
+IotConnectionStateStore s_iotConnectionState;
 fs::p2p::InfomationManifest xcore_manifest;
 thread_local int s_pipelineCallbackDepth = 0;
 thread_local int s_pipelineLeaseDepth = 0;
@@ -77,6 +79,52 @@ const char* connectionStateName(ConnectionState state) {
 int64_t monotonicTimeMs() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+int iotConnectionStateValue() {
+    return s_iotConnectionState.snapshot().value();
+}
+
+bool dispatchIotConnectionSignal(
+        uint64_t connectionId,
+        const char* source,
+        const std::string& signal,
+        const std::string& state,
+        const std::string& description) {
+    std::lock_guard<std::mutex> dispatchLock(s_iotStateDispatchMutex);
+    if (connectionId != s_activeConnectionId.load() ||
+        s_connectionState.load() == ConnectionState::Stopping) {
+        LOGW("[FsP2pDiag][IOT] ignore stale state signal connectionId=%llu activeConnectionId=%llu source=%s signal=%s p2pState=%s",
+             static_cast<unsigned long long>(connectionId),
+             static_cast<unsigned long long>(s_activeConnectionId.load()),
+             source,
+             signal.c_str(),
+             connectionStateName(s_connectionState.load()));
+        return false;
+    }
+    const IotConnectionSnapshot previous = s_iotConnectionState.snapshot();
+    const auto updated = s_iotConnectionState.updateFromSignal(
+            signal, state, description);
+    if (!updated) return false;
+
+    LOGI("[FsP2pDiag][IOT] state transition connectionId=%llu source=%s signal=%s stateParam=%s previous=%d current=%d connected=%d desc=%s",
+         static_cast<unsigned long long>(connectionId),
+         source,
+         signal.c_str(),
+         state.c_str(),
+         previous.value(),
+         updated->value(),
+         updated->connected(),
+         updated->description.c_str());
+    LOGI("[FsP2pDiag][IOT] request Java state callback connectionId=%llu source=%s signal=%s connected=%d desc=%s",
+         static_cast<unsigned long long>(connectionId),
+         source,
+         signal.c_str(),
+         updated->connected(),
+         updated->description.c_str());
+    g_i_mqtt_callback.callIotConnState(
+            gJvm, updated->connected(), updated->description);
+    return true;
 }
 
 class PipelineLease {
@@ -135,7 +183,7 @@ bool stopPipeline() {
     LOGD("[FsP2pDiag][Lifecycle] stop begin connectionId=%llu state=%s iotState=%d subscribed=%d pending=%d",
          static_cast<unsigned long long>(connectionId),
          connectionStateName(s_connectionState.load()),
-         iot_connect_state_value.load(),
+         iotConnectionStateValue(),
          isIotSubscribed.load(),
          isIotSubscriptionPending.load());
     rejectPipelineOperations();
@@ -191,7 +239,7 @@ bool stopPipeline() {
     }
     s_connectionState.store(ConnectionState::Disconnected);
     s_connectStartedAtMs.store(0);
-    iot_connect_state_value.store(-1);
+    s_iotConnectionState.markDisconnected("P2P pipeline stopped");
     isIotSubscribed.store(false);
     isIotSubscriptionPending.store(false);
     s_activeConnectionId.store(0);
@@ -337,7 +385,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_getConnectSta
         LOGD("[FsP2pDiag][StatusQuery] connectionId=%llu state=%s result=true iotState=%d subscribed=%d pending=%d",
              static_cast<unsigned long long>(connectionId),
              connectionStateName(state),
-             iot_connect_state_value.load(),
+             iotConnectionStateValue(),
              isIotSubscribed.load(),
              isIotSubscriptionPending.load());
         return true;
@@ -346,7 +394,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_getConnectSta
         LOGD("[FsP2pDiag][StatusQuery] connectionId=%llu state=%s result=false iotState=%d subscribed=%d pending=%d",
              static_cast<unsigned long long>(connectionId),
              connectionStateName(state),
-             iot_connect_state_value.load(),
+             iotConnectionStateValue(),
              isIotSubscribed.load(),
              isIotSubscriptionPending.load());
         return false;
@@ -394,7 +442,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
          static_cast<unsigned long long>(requestId),
          static_cast<unsigned long long>(s_activeConnectionId.load()),
          connectionStateName(s_connectionState.load()),
-         iot_connect_state_value.load(),
+         iotConnectionStateValue(),
          isIotSubscribed.load(),
          isIotSubscriptionPending.load(),
          inPipelineCallback,
@@ -431,35 +479,55 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
          static_cast<long long>(monotonicTimeMs() - requestStartedAtMs),
          connectionStateName(currentState),
          static_cast<unsigned long long>(s_activeConnectionId.load()));
+    bool recoverDisconnectedIot = false;
     if (currentState == ConnectionState::Connecting ||
         currentState == ConnectionState::Connected) {
         g_i_mqtt_callback.set(env, i_pipeline_callback);
         const bool connected = currentState == ConnectionState::Connected;
-        const int iotState = iot_connect_state_value.load();
-        LOGI("[FsP2pDiag][Connect] reuse requestId=%llu connectionId=%llu p2pState=%s p2pReplayConnected=%d iotState=%d",
-             static_cast<unsigned long long>(requestId),
-             static_cast<unsigned long long>(s_activeConnectionId.load()),
-             connectionStateName(currentState),
-             connected,
-             iotState);
-        PipelineCallbackScope callbackScope;
-        g_i_mqtt_callback.callP2pConnState(
-                gJvm, connected, connected ? "Connected" : "Connecting");
-        if (iotState == 1) {
-            LOGD("[FsP2pDiag][Connect] replay IOT callback requestId=%llu connectionId=%llu connected=true",
-                 static_cast<unsigned long long>(requestId),
-                 static_cast<unsigned long long>(s_activeConnectionId.load()));
-            g_i_mqtt_callback.callIotConnState(gJvm, true, "Connected");
-        } else {
-            LOGW("[FsP2pDiag][Connect] skip IOT callback replay requestId=%llu connectionId=%llu reason=iot_not_connected iotState=%d",
+        IotConnectionSnapshot iotSnapshot;
+        int iotState = 0;
+        {
+            PipelineCallbackScope callbackScope;
+            g_i_mqtt_callback.callP2pConnState(
+                    gJvm, connected, connected ? "Connected" : "Connecting");
+            std::lock_guard<std::mutex> dispatchLock(s_iotStateDispatchMutex);
+            iotSnapshot = s_iotConnectionState.snapshot();
+            iotState = iotSnapshot.value();
+            recoverDisconnectedIot = connected && iotSnapshot.needsRecovery();
+            LOGI("[FsP2pDiag][Connect] reuse candidate requestId=%llu connectionId=%llu p2pState=%s p2pReplayConnected=%d iotState=%d recoveryRequired=%d",
                  static_cast<unsigned long long>(requestId),
                  static_cast<unsigned long long>(s_activeConnectionId.load()),
-                 iotState);
+                 connectionStateName(currentState),
+                 connected,
+                 iotState,
+                 recoverDisconnectedIot);
+            if (iotSnapshot.known()) {
+                const std::string replayDescription = iotSnapshot.replayDescription();
+                LOGD("[FsP2pDiag][Connect] replay IOT callback requestId=%llu connectionId=%llu connected=%d desc=%s",
+                     static_cast<unsigned long long>(requestId),
+                     static_cast<unsigned long long>(s_activeConnectionId.load()),
+                     iotSnapshot.connected(),
+                     replayDescription.c_str());
+                g_i_mqtt_callback.callIotConnState(
+                        gJvm, iotSnapshot.connected(), replayDescription);
+            } else {
+                LOGW("[FsP2pDiag][Connect] skip IOT callback replay requestId=%llu connectionId=%llu reason=iot_state_unknown iotState=%d",
+                     static_cast<unsigned long long>(requestId),
+                     static_cast<unsigned long long>(s_activeConnectionId.load()),
+                     iotState);
+            }
         }
-        LOGI("[FsP2pDiag][Connect] return requestId=%llu action=reused elapsedMs=%lld",
+        if (!recoverDisconnectedIot) {
+            LOGI("[FsP2pDiag][Connect] return requestId=%llu action=reused elapsedMs=%lld",
+                 static_cast<unsigned long long>(requestId),
+                 static_cast<long long>(monotonicTimeMs() - requestStartedAtMs));
+            return;
+        }
+        LOGI("[FsP2pDiag][Connect] recover IOT requestId=%llu connectionId=%llu action=rebuild_pipeline previousIotState=%d desc=%s",
              static_cast<unsigned long long>(requestId),
-             static_cast<long long>(monotonicTimeMs() - requestStartedAtMs));
-        return;
+             static_cast<unsigned long long>(s_activeConnectionId.load()),
+             iotState,
+             iotSnapshot.description.c_str());
     }
 
     jclass xCoreBeanCls = env->GetObjectClass(xCoreBean);
@@ -504,6 +572,23 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
          !passWord.empty(),
          protocol.size());
 
+    if (recoverDisconnectedIot) {
+        std::lock_guard<std::mutex> dispatchLock(s_iotStateDispatchMutex);
+        const IotConnectionSnapshot latestIotSnapshot = s_iotConnectionState.snapshot();
+        if (!latestIotSnapshot.needsRecovery()) {
+            LOGI("[FsP2pDiag][Connect] cancel IOT recovery requestId=%llu connectionId=%llu latestIotState=%d reason=state_recovered_before_rebuild",
+                 static_cast<unsigned long long>(requestId),
+                 static_cast<unsigned long long>(s_activeConnectionId.load()),
+                 latestIotSnapshot.value());
+            return;
+        }
+        rejectPipelineOperations();
+        LOGD("[FsP2pDiag][Connect] IOT recovery locked requestId=%llu connectionId=%llu state=%s",
+             static_cast<unsigned long long>(requestId),
+             static_cast<unsigned long long>(s_activeConnectionId.load()),
+             connectionStateName(s_connectionState.load()));
+    }
+
     if (!stopPipeline()) {
         LOGE("Cannot reconnect because the previous pipeline did not stop safely");
         LOGE("[FsP2pDiag][Connect] return requestId=%llu reason=previous_pipeline_stop_failed",
@@ -527,7 +612,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
         }
         s_connectionState.store(ConnectionState::Connecting);
         s_connectStartedAtMs.store(monotonicTimeMs());
-        iot_connect_state_value.store(0);
+        s_iotConnectionState.reset();
         isIotSubscribed.store(false);
         isIotSubscriptionPending.store(false);
         LOGD("[FsP2pDiag][Connect] pipeline initialized requestId=%llu connectionId=%llu state=%s iotState=0 subscribed=0 pending=0",
@@ -548,7 +633,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
                  static_cast<unsigned long long>(connectionId),
                  isConnected,
                  connectionStateName(stateBefore),
-                 iot_connect_state_value.load(),
+                 iotConnectionStateValue(),
                  isIotSubscribed.load(),
                  isIotSubscriptionPending.load());
             s_connectionState.store(isConnected
@@ -634,7 +719,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
                  error_code,
                  error_string.c_str(),
                  connectionStateName(s_connectionState.load()),
-                 iot_connect_state_value.load());
+                 iotConnectionStateValue());
         });
         pipeline->setBroadcastCallback([protocol, connectionId](const fs::p2p::Request &req) {
             PipelineCallbackScope callbackScope;
@@ -759,19 +844,22 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
                                  isIotSubscribed.load(),
                                  isIotSubscriptionPending.load());
                         }
-                        iot_connect_state_value.store((state=="1")?1:-1);
-                        LOGI("[FsP2pDiag][IOT] request Java state callback connectionId=%llu source=broadcast_state connected=%d desc=%s iotStateNow=%d",
-                             static_cast<unsigned long long>(connectionId),
-                             state == "1",
-                             description.c_str(),
-                             iot_connect_state_value.load());
-                        g_i_mqtt_callback.callIotConnState(gJvm,state=="1",description);
+                        dispatchIotConnectionSignal(
+                                connectionId,
+                                "broadcast_method",
+                                method.name,
+                                state,
+                                description);
                     } else if (method.name=="iot_connect" ||
                                method.name=="iot_disconnect") {
-                        LOGW("[FsP2pDiag][IOT] control method observed connectionId=%llu deviceSn=%s method=%s route=broadcast_method callbackDispatched=0 reason=no_state_callback_branch_for_broadcast_control_method",
-                             static_cast<unsigned long long>(connectionId),
-                             device_sn.c_str(),
-                             method.name.c_str());
+                        const std::string description =
+                                iTools::getValue(method.params,"desc","");
+                        dispatchIotConnectionSignal(
+                                connectionId,
+                                "broadcast_method",
+                                method.name,
+                                "",
+                                description);
                     }
                 }
             }
@@ -845,26 +933,14 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
                      event.name.c_str(),
                      event.params.size(),
                      description.c_str());
-                if (event.name=="iot_disconnect"){
-                    LOGI("[FsP2pDiag][IOT] request Java state callback connectionId=%llu source=incoming_event connected=false desc=%s iotStateBefore=%d",
-                         static_cast<unsigned long long>(connectionId),
-                         description.c_str(),
-                         iot_connect_state_value.load());
-                    g_i_mqtt_callback.callIotConnState(gJvm, false,description);
-                    iot_connect_state_value.store(-1);
-                    LOGD("[FsP2pDiag][IOT] incoming event handled connectionId=%llu event=iot_disconnect callbackDispatched=1 iotStateNow=%d",
-                         static_cast<unsigned long long>(connectionId),
-                         iot_connect_state_value.load());
-                }else if (event.name=="iot_connect"){
-                    LOGI("[FsP2pDiag][IOT] request Java state callback connectionId=%llu source=incoming_event connected=true desc=%s iotStateBefore=%d",
-                         static_cast<unsigned long long>(connectionId),
-                         description.c_str(),
-                         iot_connect_state_value.load());
-                    g_i_mqtt_callback.callIotConnState(gJvm, true,description);
-                    iot_connect_state_value.store(1);
-                    LOGD("[FsP2pDiag][IOT] incoming event handled connectionId=%llu event=iot_connect callbackDispatched=1 iotStateNow=%d",
-                         static_cast<unsigned long long>(connectionId),
-                         iot_connect_state_value.load());
+                if (event.name=="iot_disconnect" ||
+                    event.name=="iot_connect") {
+                    dispatchIotConnectionSignal(
+                            connectionId,
+                            "incoming_event",
+                            event.name,
+                            "",
+                            description);
                 }else{
                     BaseData baseData={PutTypeTool::EVENT(),req.iid,event.name, event.params};
                     g_i_mqtt_callback.callMsgArrives(gJvm,baseData);
@@ -884,7 +960,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_connect
              static_cast<unsigned long long>(connectionId),
              static_cast<long long>(monotonicTimeMs() - requestStartedAtMs),
              connectionStateName(s_connectionState.load()),
-             iot_connect_state_value.load(),
+             iotConnectionStateValue(),
              isIotSubscribed.load(),
              isIotSubscriptionPending.load());
     } catch (const std::exception& error) {
@@ -1103,7 +1179,7 @@ JNIEXPORT jboolean JNICALL Java_com_library_natives_BaseFsP2pTools_putIotReply
          jint status_code, jstring status_desc)
 {
     PipelineLease pipelineLease;
-    if (iot_connect_state_value.load()!=1 || !pipelineLease){
+    if (!s_iotConnectionState.snapshot().connected() || !pipelineLease){
         iTools::deleteLocalRefs(env,iid,operation,data_map,status_desc);
         return false;
     }
@@ -1333,7 +1409,7 @@ JNIEXPORT void JNICALL Java_com_library_natives_BaseFsP2pTools_disConnect
     LOGI("[FsP2pDiag][Disconnect] enter connectionId=%llu state=%s iotState=%d subscribed=%d pending=%d callbackContext=%d leaseContext=%d",
          static_cast<unsigned long long>(connectionId),
          connectionStateName(s_connectionState.load()),
-         iot_connect_state_value.load(),
+         iotConnectionStateValue(),
          isIotSubscribed.load(),
          isIotSubscriptionPending.load(),
          inPipelineCallback,

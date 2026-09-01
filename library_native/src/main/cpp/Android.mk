@@ -18,6 +18,7 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE    := BaseXLink
 LOCAL_SRC_FILES += BaseXLink.cpp \
+                   IotConnectionState.cpp \
                    PipelineCallback.cpp \
                    BaseDataConverter.cpp \
                    Timer.cpp \
